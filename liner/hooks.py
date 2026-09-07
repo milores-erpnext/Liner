@@ -167,6 +167,12 @@ app_license = "mit"
 # 	],
 # }
 
+scheduler_events = {
+    "daily": [
+        "aerofreight.aerofreight.doctype.import_order.import_order.sync_all_tracking_statuses"
+    ]
+}
+
 # Testing
 # -------
 

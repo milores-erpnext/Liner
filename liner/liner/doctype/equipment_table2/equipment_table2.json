@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "creation": "2026-08-18 08:44:56.542123",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "container_no",
+  "c_type",
+  "seal_no",
+  "tare_wt",
+  "owner1",
+  "free_days",
+  "dth",
+  "og",
+  "dg"
+ ],
+ "fields": [
+  {
+   "fieldname": "container_no",
+   "fieldtype": "Data",
+   "label": "Container No"
+  },
+  {
+   "fieldname": "c_type",
+   "fieldtype": "Select",
+   "label": "C Type",
+   "options": "\n20DV\n20HC"
+  },
+  {
+   "fieldname": "seal_no",
+   "fieldtype": "Data",
+   "label": "Seal No"
+  },
+  {
+   "fieldname": "tare_wt",
+   "fieldtype": "Data",
+   "label": "Tare Wt"
+  },
+  {
+   "fieldname": "owner1",
+   "fieldtype": "Select",
+   "label": "Owner",
+   "options": "\nLine\nSOC"
+  },
+  {
+   "fieldname": "free_days",
+   "fieldtype": "Data",
+   "label": "Free Days"
+  },
+  {
+   "default": "0",
+   "fieldname": "dth",
+   "fieldtype": "Check",
+   "label": "DTH"
+  },
+  {
+   "default": "0",
+   "fieldname": "og",
+   "fieldtype": "Check",
+   "label": "OG"
+  },
+  {
+   "default": "0",
+   "fieldname": "dg",
+   "fieldtype": "Check",
+   "label": "DG"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-07 23:22:27.142639",
+ "modified_by": "Administrator",
+ "module": "Liner",
+ "name": "Equipment Table2",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
