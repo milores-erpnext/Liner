@@ -1,0 +1,645 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "autoname": "format:{YYYY}-{#####}",
+ "creation": "2026-08-14 10:47:13.546862",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "booking_tab",
+  "section_break_9zc4",
+  "amended_from",
+  "main_job__vessel_details_section",
+  "main_job__vessel_details",
+  "vessel",
+  "voyage_no",
+  "port",
+  "project",
+  "column_break_bagl",
+  "test",
+  "line",
+  "customer",
+  "company",
+  "line_booking_ref",
+  "clients_reference",
+  "executive",
+  "booking_order_details_section",
+  "booking_order_details",
+  "inco_term",
+  "freight_type",
+  "load_type",
+  "move_type",
+  "arrival_date",
+  "cargo_type",
+  "imco_class",
+  "imco_group",
+  "column_break_xnea",
+  "other_details",
+  "status",
+  "remarks",
+  "do_block_reason",
+  "notification_block_reason",
+  "routing_tab",
+  "table_gfyk",
+  "transhipment_details_section",
+  "table_ugur",
+  "party_tab",
+  "table_zvxa",
+  "cargo_tab",
+  "commodity",
+  "origin",
+  "hs_code",
+  "commodity1",
+  "desc_of_goods",
+  "marks_and_nos",
+  "shipping_terms",
+  "package_details",
+  "column_break_tuae",
+  "packing",
+  "packing_type",
+  "no_of_packs",
+  "gross_weight_kg",
+  "net_weight_kg",
+  "volume_cbm",
+  "chargeable_volcbm",
+  "invoice_no",
+  "invoice_value",
+  "currency",
+  "roe",
+  "unit_value",
+  "tab_5_tab",
+  "table_cgpc",
+  "table_tvep",
+  "expected_routing",
+  "services_tab",
+  "pre_carrage",
+  "terminal_handling_origin",
+  "terminal_handling_destination",
+  "storage",
+  "column_break_bbum",
+  "documentation",
+  "chamber_attestation",
+  "cargo_inspection",
+  "miscellaneous",
+  "freightcharges_tab",
+  "get_local_freight_charges",
+  "contract_agreement",
+  "grand_total",
+  "job_expenses_tab",
+  "freights",
+  "bill_of_lading_tab",
+  "bl_no",
+  "bl_date",
+  "bl_status",
+  "no_of_originals",
+  "no_of_copys",
+  "bl_clause",
+  "column_break_lbez",
+  "place_of_issue",
+  "payable_at",
+  "delivery_agent",
+  "slot_operator",
+  "discharge_agent",
+  "bl_remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "booking_tab",
+   "fieldtype": "Tab Break",
+   "label": "Booking\ud83d\udea2"
+  },
+  {
+   "fieldname": "section_break_9zc4",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Import Order",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "main_job__vessel_details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "main_job__vessel_details",
+   "fieldtype": "Heading",
+   "label": "Main Job / Vessel Details"
+  },
+  {
+   "fieldname": "vessel",
+   "fieldtype": "Data",
+   "label": "Vessel"
+  },
+  {
+   "fieldname": "voyage_no",
+   "fieldtype": "Data",
+   "label": "Voyage No"
+  },
+  {
+   "fieldname": "port",
+   "fieldtype": "Data",
+   "label": "Port"
+  },
+  {
+   "depends_on": "eval:doc.company",
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "fieldname": "column_break_bagl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "TY",
+   "fieldname": "test",
+   "fieldtype": "Heading",
+   "label": "Customer Details"
+  },
+  {
+   "fieldname": "line",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Line",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "line_booking_ref",
+   "fieldtype": "Data",
+   "label": "Line Booking Ref"
+  },
+  {
+   "fieldname": "clients_reference",
+   "fieldtype": "Data",
+   "label": "Client's Reference"
+  },
+  {
+   "fieldname": "executive",
+   "fieldtype": "Link",
+   "label": "Executive",
+   "options": "Sales Person",
+   "reqd": 1
+  },
+  {
+   "fieldname": "booking_order_details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "booking_order_details",
+   "fieldtype": "Heading",
+   "label": "Booking Order Details"
+  },
+  {
+   "fieldname": "inco_term",
+   "fieldtype": "Link",
+   "label": "INCO Term",
+   "options": "Incoterm"
+  },
+  {
+   "fieldname": "freight_type",
+   "fieldtype": "Select",
+   "label": "Freight Type",
+   "options": "\nPrepaid\nCollect"
+  },
+  {
+   "fieldname": "load_type",
+   "fieldtype": "Select",
+   "label": "Load Type",
+   "options": "\nFCL/FCL"
+  },
+  {
+   "fieldname": "move_type",
+   "fieldtype": "Select",
+   "label": "Move Type",
+   "options": "\nCY/CY"
+  },
+  {
+   "fieldname": "arrival_date",
+   "fieldtype": "Date",
+   "label": "Arrival Date"
+  },
+  {
+   "fieldname": "cargo_type",
+   "fieldtype": "Select",
+   "label": "Cargo Type",
+   "options": "\nGeneral Cargo"
+  },
+  {
+   "fieldname": "imco_class",
+   "fieldtype": "Data",
+   "label": "IMCO Class"
+  },
+  {
+   "fieldname": "imco_group",
+   "fieldtype": "Data",
+   "label": "IMCO Group"
+  },
+  {
+   "fieldname": "column_break_xnea",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "other_details",
+   "fieldtype": "Heading",
+   "label": "Other Details"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nDraft\nOrdered\nShipped\nCompleted\nCancelled"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "do_block_reason",
+   "fieldtype": "Small Text",
+   "label": "DO Block Reason"
+  },
+  {
+   "fieldname": "notification_block_reason",
+   "fieldtype": "Small Text",
+   "label": "Notification Block Reason"
+  },
+  {
+   "fieldname": "routing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Routing\u2693"
+  },
+  {
+   "fieldname": "table_gfyk",
+   "fieldtype": "Table",
+   "options": "Routing Table"
+  },
+  {
+   "fieldname": "transhipment_details_section",
+   "fieldtype": "Section Break",
+   "label": "Transhipment Details"
+  },
+  {
+   "fieldname": "table_ugur",
+   "fieldtype": "Table",
+   "options": "Routing Table"
+  },
+  {
+   "fieldname": "party_tab",
+   "fieldtype": "Tab Break",
+   "label": "Party \ud83d\udc65"
+  },
+  {
+   "fieldname": "table_zvxa",
+   "fieldtype": "Table",
+   "options": "Party Table"
+  },
+  {
+   "fieldname": "cargo_tab",
+   "fieldtype": "Tab Break",
+   "label": "Cargo\ud83d\udce6"
+  },
+  {
+   "fieldname": "commodity",
+   "fieldtype": "Heading",
+   "label": "Commodity"
+  },
+  {
+   "fieldname": "origin",
+   "fieldtype": "Data",
+   "label": "Origin"
+  },
+  {
+   "fieldname": "hs_code",
+   "fieldtype": "Data",
+   "label": "HS Code"
+  },
+  {
+   "fieldname": "commodity1",
+   "fieldtype": "Small Text",
+   "label": "Commodity"
+  },
+  {
+   "fieldname": "desc_of_goods",
+   "fieldtype": "Small Text",
+   "label": "Desc Of Goods"
+  },
+  {
+   "fieldname": "marks_and_nos",
+   "fieldtype": "Small Text",
+   "label": "Marks And Nos"
+  },
+  {
+   "fieldname": "shipping_terms",
+   "fieldtype": "Small Text",
+   "label": "Shipping Terms"
+  },
+  {
+   "fieldname": "package_details",
+   "fieldtype": "Small Text",
+   "label": "Package Details"
+  },
+  {
+   "fieldname": "column_break_tuae",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "packing",
+   "fieldtype": "Heading",
+   "label": "Packing"
+  },
+  {
+   "fieldname": "packing_type",
+   "fieldtype": "Data",
+   "label": "Packing Type"
+  },
+  {
+   "fieldname": "no_of_packs",
+   "fieldtype": "Data",
+   "label": "No Of Packs"
+  },
+  {
+   "fieldname": "gross_weight_kg",
+   "fieldtype": "Data",
+   "label": "Gross Weight (Kg)"
+  },
+  {
+   "fieldname": "net_weight_kg",
+   "fieldtype": "Data",
+   "label": "Net Weight (Kg)"
+  },
+  {
+   "fieldname": "volume_cbm",
+   "fieldtype": "Data",
+   "label": "Volume (Cbm)"
+  },
+  {
+   "fieldname": "chargeable_volcbm",
+   "fieldtype": "Data",
+   "label": "Chargeable Vol.(CbM)"
+  },
+  {
+   "fieldname": "invoice_no",
+   "fieldtype": "Data",
+   "label": "Invoice No."
+  },
+  {
+   "fieldname": "invoice_value",
+   "fieldtype": "Data",
+   "label": "Invoice Value"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Select",
+   "label": "Currency",
+   "options": "\nAED\nAUD"
+  },
+  {
+   "fieldname": "roe",
+   "fieldtype": "Data",
+   "label": "ROE"
+  },
+  {
+   "fieldname": "unit_value",
+   "fieldtype": "Data",
+   "label": "Unit Value"
+  },
+  {
+   "fieldname": "tab_5_tab",
+   "fieldtype": "Tab Break",
+   "label": "Equipment\ud83d\udce6"
+  },
+  {
+   "fieldname": "table_cgpc",
+   "fieldtype": "Table",
+   "options": "Equipment Table1"
+  },
+  {
+   "fieldname": "table_tvep",
+   "fieldtype": "Table",
+   "options": "Equipment Table2"
+  },
+  {
+   "fieldname": "expected_routing",
+   "fieldtype": "Table",
+   "label": "Expected Routing",
+   "options": "Container Tracking"
+  },
+  {
+   "fieldname": "services_tab",
+   "fieldtype": "Tab Break",
+   "label": "Services\ud83c\udf10"
+  },
+  {
+   "default": "0",
+   "fieldname": "pre_carrage",
+   "fieldtype": "Check",
+   "label": "Pre Carrage"
+  },
+  {
+   "default": "0",
+   "fieldname": "terminal_handling_origin",
+   "fieldtype": "Check",
+   "label": "Terminal Handling - Origin"
+  },
+  {
+   "default": "0",
+   "fieldname": "terminal_handling_destination",
+   "fieldtype": "Check",
+   "label": "Terminal Handling - Destination"
+  },
+  {
+   "default": "0",
+   "fieldname": "storage",
+   "fieldtype": "Check",
+   "label": "Storage"
+  },
+  {
+   "fieldname": "column_break_bbum",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "documentation",
+   "fieldtype": "Check",
+   "label": "Documentation"
+  },
+  {
+   "default": "0",
+   "fieldname": "chamber_attestation",
+   "fieldtype": "Check",
+   "label": "Chamber Attestation"
+  },
+  {
+   "default": "0",
+   "fieldname": "cargo_inspection",
+   "fieldtype": "Check",
+   "label": "Cargo Inspection"
+  },
+  {
+   "default": "0",
+   "fieldname": "miscellaneous",
+   "fieldtype": "Check",
+   "label": "Miscellaneous"
+  },
+  {
+   "fieldname": "freightcharges_tab",
+   "fieldtype": "Tab Break",
+   "label": "Freight/Charges\ud83d\udcb0"
+  },
+  {
+   "fieldname": "get_local_freight_charges",
+   "fieldtype": "Button",
+   "label": "Get Local Freight Charges"
+  },
+  {
+   "fieldname": "contract_agreement",
+   "fieldtype": "Table",
+   "label": "Contract Agreement",
+   "options": "Contract Agreement Table",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Float",
+   "label": "Grand Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "job_expenses_tab",
+   "fieldtype": "Tab Break",
+   "label": "Job Expenses\ud83d\udcb8"
+  },
+  {
+   "fieldname": "freights",
+   "fieldtype": "Table",
+   "label": "Freights",
+   "options": "Job Expenses"
+  },
+  {
+   "fieldname": "bill_of_lading_tab",
+   "fieldtype": "Tab Break",
+   "label": "Bill of Lading\ud83d\udcdc"
+  },
+  {
+   "fieldname": "bl_no",
+   "fieldtype": "Data",
+   "label": "BL No"
+  },
+  {
+   "fieldname": "bl_date",
+   "fieldtype": "Date",
+   "label": "BL Date"
+  },
+  {
+   "fieldname": "bl_status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "BL Status",
+   "options": "\nEXPRESS(B/L COPY)"
+  },
+  {
+   "fieldname": "no_of_originals",
+   "fieldtype": "Data",
+   "label": "No Of Originals"
+  },
+  {
+   "fieldname": "no_of_copys",
+   "fieldtype": "Data",
+   "label": "No Of Copys"
+  },
+  {
+   "fieldname": "bl_clause",
+   "fieldtype": "Small Text",
+   "label": "BL Clause"
+  },
+  {
+   "fieldname": "column_break_lbez",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "place_of_issue",
+   "fieldtype": "Data",
+   "label": "Place Of Issue"
+  },
+  {
+   "fieldname": "payable_at",
+   "fieldtype": "Data",
+   "label": "Payable At"
+  },
+  {
+   "fieldname": "delivery_agent",
+   "fieldtype": "Data",
+   "label": "Delivery Agent"
+  },
+  {
+   "fieldname": "slot_operator",
+   "fieldtype": "Data",
+   "label": "Slot Operator"
+  },
+  {
+   "fieldname": "discharge_agent",
+   "fieldtype": "Data",
+   "label": "Discharge Agent"
+  },
+  {
+   "fieldname": "bl_remarks",
+   "fieldtype": "Small Text",
+   "label": "BL Remarks"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-09-07 23:02:09.187473",
+ "modified_by": "Administrator",
+ "module": "Liner",
+ "name": "Import Order",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

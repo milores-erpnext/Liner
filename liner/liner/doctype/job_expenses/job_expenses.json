@@ -1,0 +1,66 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "creation": "2026-08-28 17:02:05.479077",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "ctype",
+  "element",
+  "rate",
+  "currency",
+  "collect_by",
+  "no_of_containers"
+ ],
+ "fields": [
+  {
+   "fieldname": "ctype",
+   "fieldtype": "Link",
+   "label": "CType",
+   "options": "Container Type"
+  },
+  {
+   "fieldname": "element",
+   "fieldtype": "Data",
+   "label": "Element"
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Float",
+   "label": "Rate"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "collect_by",
+   "fieldtype": "Data",
+   "label": "Collect By"
+  },
+  {
+   "fieldname": "no_of_containers",
+   "fieldtype": "Int",
+   "label": "No of Containers"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-07 23:24:29.562719",
+ "modified_by": "Administrator",
+ "module": "Liner",
+ "name": "Job Expenses",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
