@@ -11,7 +11,7 @@ const status_colors = {
     // "status" Select field (case-sensitive). Adjust as needed.
 };
 
-frappe.ui.form.on("Import Order", {
+frappe.ui.form.on("Import-Export Order", {
     refresh(frm) {
         // frm.add_custom_button(__("Attach XML"), () => {
         //     open_xml_upload_dialog(frm);
@@ -51,9 +51,9 @@ frappe.ui.form.on("Import Order", {
     },
     get_local_freight_charges(frm) {
         frappe.call({
-            method: "liner.liner.doctype.import_order.import_order.get_local_freight_charges",
+            method: "liner.liner.doctype.import_export_order.import_export_order.get_local_freight_charges",
             args: {
-                import_order: frm.doc.name
+                import_export_order: frm.doc.name
             },
             freeze: true,
             freeze_message: __("Fetching Local Freight Charges..."),
@@ -97,7 +97,7 @@ function open_xml_upload_dialog(frm) {
 
             reader.onload = function (e) {
                 frappe.call({
-                    method: "liner.liner.doctype.import_order.import_order.import_xml",
+                    method: "liner.liner.doctype.import_export_order.import_export_order.import_xml",
                     args: {
                         xml_text: e.target.result,
                     },
@@ -175,14 +175,14 @@ function set_status(frm, new_status) {
 
 function make_sales_invoice(frm) {
     frappe.model.open_mapped_doc({
-        method: "liner.liner.doctype.import_order.import_order.make_sales_invoice",
+        method: "liner.liner.doctype.import_export_order.import_export_order.make_sales_invoice",
         frm: frm
     });
 }
 
 function make_payment_entry(frm) {
     frappe.model.open_mapped_doc({
-        method: "liner.liner.doctype.import_order.import_order.make_payment_entry",
+        method: "liner.liner.doctype.import_export_order.import_export_order.make_payment_entry",
         frm: frm
     });
 }

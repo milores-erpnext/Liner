@@ -7,6 +7,8 @@ from frappe.model.document import Document
 
 class ContractAgreement(Document):
 	def validate(self):
+		self.grand_total = 0
+
 		if self.table_vunr:
 			for row in self.table_vunr:
-				self.grand_total += row.amount
+				self.grand_total += row.amount or 0

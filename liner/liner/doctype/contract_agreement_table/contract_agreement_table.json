@@ -16,14 +16,15 @@
   "eq_type",
   "qty",
   "rate",
-  "amount"
+  "cost_price",
+  "amount",
+  "line_cost_price"
  ],
  "fields": [
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
    "label": "Item Code",
-   "link_filters": "[[\"Item\",\"is_stock_item\",\"=\",1]]",
    "options": "Item"
   },
   {
@@ -75,14 +76,24 @@
   {
    "fieldname": "amount",
    "fieldtype": "Float",
-   "label": "Amount"
+   "label": "Line Total Amount"
+  },
+  {
+   "fieldname": "cost_price",
+   "fieldtype": "Float",
+   "label": "Cost Price"
+  },
+  {
+   "fieldname": "line_cost_price",
+   "fieldtype": "Float",
+   "label": "Line Total Cost Price"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-07 23:20:57.839272",
+ "modified": "2026-09-09 11:46:10.962823",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Contract Agreement Table",

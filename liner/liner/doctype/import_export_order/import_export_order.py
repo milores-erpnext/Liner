@@ -12,7 +12,7 @@ from datetime import datetime
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import today
 
-class ImportOrder(Document):
+class ImportExportOrder(Document):
 	def on_update(self):
 		self.sync_container_items()
 		self.fetch_container_tracking()
@@ -152,183 +152,6 @@ def ensure_container_item_group_exists():
 			"is_group": 0,
 		}).insert(ignore_permissions=True)
 
-# @frappe.whitelist()
-# def import_xml(xml_text):
-# 	root = ET.fromstring(xml_text)
-
-# 	values = {}
-
-# 	# Attributes on the root <Vessel> element
-# 	root_field_map = {
-# 		"VesselName": "vessel",
-# 		"Voyage": "voyage_no",
-# 	}
-# 	for xml_attr, fieldname in root_field_map.items():
-# 		value = root.attrib.get(xml_attr)
-# 		if value:
-# 			values[fieldname] = value.strip()
-
-# 	booking = root.find("Booking")
-# 	if booking is not None:
-# 		booking_field_map = {
-# 			"TASBookingno": "line_booking_ref",
-# 		}
-# 		for xml_attr, fieldname in booking_field_map.items():
-# 			value = booking.attrib.get(xml_attr)
-# 			if value:
-# 				values[fieldname] = value.strip()
-
-# 		bl = booking.find("BL")
-# 		if bl is not None:
-# 			bl_field_map = {
-# 				"Blno": "bl_no",
-# 				"BLdate": "bl_date",
-# 			}
-# 			for xml_attr, fieldname in bl_field_map.items():
-# 				value = bl.attrib.get(xml_attr)
-# 				if value:
-# 					value = value.strip()
-# 					if xml_attr == "BLdate":
-# 						try:
-# 							value = datetime.strptime(value, "%d-%m-%Y").strftime("%Y-%m-%d")
-# 						except ValueError:
-# 							frappe.log_error(
-# 								f"Could not parse BLdate value: {value}",
-# 								"Import Order XML Import",
-# 							)
-# 							continue
-# 					values[fieldname] = value
-
-# 			# Party table: Shipper + Consignee rows from <Party>
-# 			party = bl.find("Party")
-# 			if party is not None:
-# 				parties = []
-
-# 				shipper_name = party.attrib.get("Shipper")
-# 				if shipper_name:
-# 					parties.append({
-# 						"party": "Shipper",
-# 						"name1": shipper_name.strip(),
-# 						"address": (party.attrib.get("ShipperAdd") or "").strip(),
-# 						"fax": "",
-# 						"email": "",
-# 						"phone": "",
-# 					})
-
-# 				consignee_name = party.attrib.get("Consignee")
-# 				if consignee_name:
-# 					parties.append({
-# 						"party": "Consignee",
-# 						"name1": consignee_name.strip(),
-# 						"address": (party.attrib.get("ConsigneeAdd") or "").strip(),
-# 						"fax": "",
-# 						"email": "",
-# 						"phone": "",
-# 					})
-
-# 				notify1_name = party.attrib.get("Notify1")
-# 				if notify1_name:
-# 					parties.append({
-# 						"party": "Notify1",
-# 						"name1": notify1_name.strip(),
-# 						"address": (party.attrib.get("Notify1Add") or "").strip(),
-# 						"fax": "",
-# 						"email": "",
-# 						"phone": "",
-# 					})
-
-# 				if parties:
-# 					values["table_zvxa"] = parties
-
-# 			# Routing table: 4 fixed hub rows, values from <Routing>
-# 			routing = bl.find("Routing")
-# 			if routing is not None:
-# 				hub_xml_map = {
-# 					"Place of Receipt": "PlaceofReceipt",
-# 					"Port of Loading": "PortOfLoading",
-# 					"Port of Discharge": "PortOfDischarge",
-# 					"Place of Delivery": "FinalPlaceOfDelivery",
-# 				}
-
-# 				routing_rows = []
-# 				for hub_label, xml_attr in hub_xml_map.items():
-# 					hub_value = routing.attrib.get(xml_attr)
-# 					routing_rows.append({
-# 						"hub": hub_label,
-# 						"hub_name": (hub_value or "").strip(),
-# 					})
-
-# 				values["table_gfyk"] = routing_rows
-
-# 			# Cargo fields from <Cargo>
-# 			cargo = bl.find("Cargo")
-# 			if cargo is not None:
-# 				cargo_field_map = {
-# 					"MarksAndNos": "marks_and_nos",
-# 					"NoOfPacks": "no_of_packs",
-# 					"PackageDtl": "package_details",
-# 					"DescriptionOfGoods": "desc_of_goods",
-# 					"WeightInKg": "gross_weight_kg",
-# 					"MeasurementCBM": "volume_cbm",
-# 				}
-# 				for xml_attr, fieldname in cargo_field_map.items():
-# 					value = cargo.attrib.get(xml_attr)
-# 					if value:
-# 						values[fieldname] = value.strip()
-
-# 				# Extract HS Code from DescriptionOfGoods
-# 				description = cargo.attrib.get("DescriptionOfGoods", "")
-# 				if description:
-# 					match = re.search(r"HS\s*CODE[:\s]*([0-9]{6,10})", description, re.IGNORECASE)
-# 					if match:
-# 						values["hs_code"] = match.group(1)
-
-# 				# Container-level tables from <Containers><Container/></Containers>
-# 				containers_node = cargo.find("Containers")
-# 				if containers_node is not None:
-# 					equipment_summary = {}  # CType -> count, for table_cgpc
-# 					equipment_detail = []    # one row per container, for table_tvep
-
-# 					for container in containers_node.findall("Container"):
-# 						c_type = (container.attrib.get("CType") or "").strip()
-
-# 						if c_type:
-# 							equipment_summary[c_type] = equipment_summary.get(c_type, 0) + 1
-
-# 						equipment_detail.append({
-# 							"c_type": c_type,
-# 							"container_no": (container.attrib.get("ContainerNo") or "").strip(),
-# 							"seal_no": (container.attrib.get("SealnO") or "").strip(),
-# 							"tare_wt": (container.attrib.get("TareWt") or "").strip(),
-# 						})
-
-# 					if equipment_summary:
-# 						values["table_cgpc"] = [
-# 							{"type": c_type, "nos": str(count)}
-# 							for c_type, count in equipment_summary.items()
-# 						]
-
-# 					if equipment_detail:
-# 						values["table_tvep"] = equipment_detail
-# 		# Freight child table from <Freights>
-# 		freights = booking.find("Freights")
-# 		if freights is not None:
-# 			freight_rows = []
-
-# 			for row in freights.findall("ContainerWise"):
-# 				freight_rows.append({
-# 					"ctype": (row.attrib.get("CType") or "").strip(),
-# 					"element": (row.attrib.get("Element") or "").strip(),
-# 					"rate": float(row.attrib.get("Rate") or 0),
-# 					"currency": (row.attrib.get("Currency") or "").strip(),
-# 					"collect_by": (row.attrib.get("CollectBy") or "").strip(),
-# 					"no_of_containers": int(row.attrib.get("NoofContainers") or 0),
-# 				})
-
-# 			if freight_rows:
-# 				values["freights"] = freight_rows
-# 	return values
-
 @frappe.whitelist()
 def import_xml(xml_text):
 	"""
@@ -346,10 +169,10 @@ def import_xml(xml_text):
 
 
 @frappe.whitelist()
-def import_xml_bulk(xml_text):
+def import_xml_bulk(xml_text,order_type):
 	"""
 	Parses every <Booking> under the <Vessel> root and creates one
-	Import Order per booking. TASBookingno (-> line_booking_ref) is
+	Import-Export Order per booking. TASBookingno (-> line_booking_ref) is
 	unique per booking; bookings that already exist are skipped.
 	"""
 	root = ET.fromstring(xml_text)
@@ -364,19 +187,20 @@ def import_xml_bulk(xml_text):
 		if not tas_booking_no:
 			continue
 
-		if frappe.db.exists("Import Order", {"line_booking_ref": tas_booking_no}):
+		if frappe.db.exists("Import-Export Order", {"line_booking_ref": tas_booking_no}):
 			skipped.append(tas_booking_no)
 			continue
 
 		try:
 			values.setdefault("status", "Draft")
-			doc = frappe.get_doc({"doctype": "Import Order", **values})
+			doc = frappe.get_doc({"doctype": "Import-Export Order", **values})
+			doc.order_type = order_type
 			# ignore_mandatory: company/customer etc. aren't in the XML and
 			# will be filled in manually after import
 			doc.insert(ignore_permissions=True, ignore_mandatory=True)
 			created.append({"name": doc.name, "line_booking_ref": tas_booking_no})
 		except Exception:
-			frappe.log_error(frappe.get_traceback(), "Import Order Bulk XML Import")
+			frappe.log_error(frappe.get_traceback(), "Import-Export Order Bulk XML Import")
 			errors.append(tas_booking_no)
 
 	return {"created": created, "skipped": skipped, "errors": errors}
@@ -416,7 +240,7 @@ def _extract_booking_values(values, booking):
 				try:
 					value = datetime.strptime(value, "%d-%m-%Y").strftime("%Y-%m-%d")
 				except ValueError:
-					frappe.log_error(f"Could not parse BLdate value: {value}", "Import Order XML Import")
+					frappe.log_error(f"Could not parse BLdate value: {value}", "Import-Export Order XML Import")
 					continue
 			values[fieldname] = value
 
@@ -532,8 +356,8 @@ def format_date(value):
 	return None
 	
 @frappe.whitelist()
-def get_local_freight_charges(import_order):
-	io = frappe.get_doc("Import Order", import_order)
+def get_local_freight_charges(import_export_order):
+	io = frappe.get_doc("Import-Export Order", import_export_order)
 
 	# Find matching active Contract Agreement
 	contract_name = frappe.db.get_value(
@@ -569,8 +393,9 @@ def get_local_freight_charges(import_order):
 			"qty": row.qty,
 			"rate": row.rate,
 			"amount": row.amount,
+			"line_cost_price": row.line_cost_price,
 		})
-	io.db_set("grand_total", sum(row.amount for row in io.contract_agreement), update_modified=False)	
+	io.db_set("grand_total", sum(row.amount+row.line_cost_price for row in io.contract_agreement), update_modified=False)	
 	io.save(ignore_permissions=True)
 
 	return {
@@ -580,28 +405,28 @@ def get_local_freight_charges(import_order):
 def sync_all_tracking_statuses():
 	"""
 	Daily scheduled job: refreshes container routing (expected_routing)
-	and bl_status for every Import Order that still has a BL No set.
+	and bl_status for every Import-Export Order that still has a BL No set.
 	Each document runs as its own background job so one slow/erroring
 	API call doesn't block the rest of the batch.
 	"""
 	names = frappe.get_all(
-		"Import Order",
+		"Import-Export Order",
 		filters={"bl_no": ["is", "set"]},
 		pluck="name",
 	)
 
 	for name in names:
 		frappe.enqueue(
-			method="liner.liner.doctype.import_order.import_order.sync_single_tracking_status",
+			method="liner.liner.doctype.import_export_order.import_export_order.sync_single_tracking_status",
 			queue="long",
-			job_name=f"import_order_tracking_sync_{name}",
+			job_name=f"import_export_order_tracking_sync_{name}",
 			docname=name,
 		)
 
 
 def sync_single_tracking_status(docname):
 	try:
-		doc = frappe.get_doc("Import Order", docname)
+		doc = frappe.get_doc("Import-Export Order", docname)
 		doc.fetch_container_tracking()
 		doc.fetch_bl_status()
 		frappe.db.commit()
@@ -609,7 +434,7 @@ def sync_single_tracking_status(docname):
 		frappe.db.rollback()
 		frappe.log_error(
 			frappe.get_traceback(),
-			f"Import Order Tracking Sync Failed: {docname}",
+			f"Import-Export Order Tracking Sync Failed: {docname}",
 		)
 
 @frappe.whitelist()
@@ -620,14 +445,14 @@ def make_sales_invoice(source_name, target_doc=None):
         target.project = source.project
         target.due_date = frappe.utils.today()
 
-        # Link back to Import Order (optional custom field)
-        target.import_order = source.name
+        # Link back to Import-Export Order (optional custom field)
+        target.import_export_order = source.name
 
     doc = get_mapped_doc(
-        "Import Order",
+        "Import-Export Order",
         source_name,
         {
-            "Import Order": {
+            "Import-Export Order": {
                 "doctype": "Sales Invoice",
                 "validation": {
                     "docstatus": ["=", 1]
@@ -660,7 +485,7 @@ def make_payment_entry(source_name, target_doc=None):
         target.company = source.company
         target.posting_date = today()
 
-        # Amount from Import Order
+        # Amount from Import-Export Order
         target.paid_amount = source.grand_total or 0
         target.received_amount = source.grand_total or 0
 
@@ -669,14 +494,14 @@ def make_payment_entry(source_name, target_doc=None):
         target.reference_date = source.arrival_date or today()
 
         # Optional custom link field
-        if hasattr(target, "import_order"):
-            target.import_order = source.name
+        if hasattr(target, "import_export_order"):
+            target.import_export_order = source.name
 
     doc = get_mapped_doc(
-        "Import Order",
+        "Import-Export Order",
         source_name,
         {
-            "Import Order": {
+            "Import-Export Order": {
                 "doctype": "Payment Entry",
                 "validation": {
                     "docstatus": ["=", 1]
