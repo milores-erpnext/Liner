@@ -25,9 +25,8 @@
   },
   {
    "fieldname": "c_type",
-   "fieldtype": "Select",
-   "label": "C Type",
-   "options": "\n20DV\n20HC\n40HC"
+   "fieldtype": "Data",
+   "label": "C Type"
   },
   {
    "fieldname": "seal_no",
@@ -73,7 +72,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-20 14:02:04.871458",
+ "modified": "2026-09-20 14:10:22.904360",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Equipment Table2",
