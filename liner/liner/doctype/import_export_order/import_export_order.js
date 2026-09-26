@@ -12,9 +12,6 @@ const status_colors = {
 
 frappe.ui.form.on("Import-Export Order", {
 	refresh(frm) {
-		// frm.add_custom_button(__("Attach XML"), () => {
-		//     open_xml_upload_dialog(frm);
-		// });
 		frm.add_custom_button(__("Manifest Download"), () => download_manifest_xml(frm));
 		frm.add_custom_button(__("Arrival Notice"), () => {
 			make_arrival_notice(frm);
@@ -26,20 +23,11 @@ frappe.ui.form.on("Import-Export Order", {
 		frm.add_custom_button(__("Gate Pass"), function () {
 			make_gate_pass(frm);
 		}, __("Print"));
+		frm.add_custom_button(__("Detention Calculation"), function () {
+			make_detention_calculation(frm);
+		}, __("Print"));
 		frm.add_custom_button(__("Payment Entry"), () => make_payment_entry(frm),__("Create"));
-		// frm.add_custom_button(__("Detection sales invoice"), () => make_payment_entry1(frm),__("Create"));
-		// frm.add_custom_button(__("Other Sales Invoice"), () => make_payment_entry1(frm),__("Create"));
-		// frm.add_custom_button(__("Freight Sales Invoice"), () => make_payment_entry1(frm),__("Create"));
-		frm.add_custom_button(__("Purchase Invoice"), () => make_payment_entry1(frm),__("Create"));
-		frm.add_custom_button(__("Liner Purchase Invoice"), () => make_payment_entry1(frm),__("Create"));
-		frm.add_custom_button(__("Inter-Company Purchase Invoice"), () => make_payment_entry1(frm),__("Create"));
-
-		// standard native indicator — left untouched, not clickable,
-		// behaves exactly like any other Frappe doctype
 		set_status_indicator(frm);
-
-		// separate custom dropdown button group for changing status,
-		// grouped under "Status" the same way "Create" groups its buttons
 		add_status_dropdown(frm);
 	},
 	onload(frm) {
@@ -503,6 +491,27 @@ async function make_arrival_notice(frm) {
 			doc: stock_entry
 		}
 	});
+
+	// ---------------------------------------------------------
+	// Send Arrival Notification to Executive
+	// ---------------------------------------------------------
+	if (saved_stock_entry.message) {
+
+		await frappe.call({
+			method:
+				"liner.liner.doctype.import_export_order.import_export_order.send_arrival_notification",
+
+			args: {
+				import_export_order: frm.doc.name,
+				stock_entry: saved_stock_entry.message.name
+			}
+		});
+
+		frappe.show_alert({
+			message: __("Arrival Notice created and notification sent to Executive."),
+			indicator: "green"
+		});
+	}
 }
  
 function show_delivery_order_dialog(frm) {
@@ -1097,4 +1106,121 @@ function download_manifest_xml(frm) {
 			});
 		}
 	});
+}
+
+function make_gate_pass(frm) {
+
+    if (frm.is_new()) {
+        frappe.msgprint(__("Please save the document first."));
+        return;
+    }
+
+    frappe.call({
+        method:
+            "liner.liner.doctype.import_export_order.import_export_order.print_gate_pass",
+
+        args: {
+            doctype: frm.doc.doctype,
+            docname: frm.doc.name
+        },
+
+        freeze: true,
+        freeze_message: __("Preparing Gate Pass..."),
+
+        callback: function (r) {
+
+            if (r.exc || !r.message) {
+                return;
+            }
+
+            const print_window = window.open("", "_blank");
+
+            if (!print_window) {
+                frappe.msgprint({
+                    title: __("Popup Blocked"),
+                    message: __(
+                        "Please allow popups in your browser to print the Gate Pass."
+                    ),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            print_window.document.open();
+            print_window.document.write(r.message);
+            print_window.document.close();
+
+            print_window.onload = function () {
+
+                print_window.focus();
+
+                setTimeout(() => {
+                    print_window.print();
+                }, 300);
+
+            };
+        }
+    });
+}
+
+function make_detention_calculation(frm) {
+
+    if (!frm.doc.table_tvep || frm.doc.table_tvep.length === 0) {
+        frappe.msgprint({
+            title: __("No Container Details"),
+            message: __("Please add at least one container before printing Detention Calculation."),
+            indicator: "red"
+        });
+        return;
+    }
+
+    if (frm.is_new()) {
+        frappe.msgprint(__("Please save the document first."));
+        return;
+    }
+
+    const print_format = "Detention charges";
+
+    frappe.call({
+        method: "frappe.www.printview.get_html_and_style",
+        args: {
+            doc: JSON.stringify(frm.doc),
+            print_format: print_format,
+            no_letterhead: 0
+        },
+        callback: function (r) {
+
+            if (r.exc || !r.message) {
+                frappe.msgprint({
+                    title: __("Error"),
+                    message: __("Unable to generate Detention Calculation print."),
+                    indicator: "red"
+                });
+                return;
+            }
+
+            const print_window = window.open("", "_blank");
+
+            if (!print_window) {
+                frappe.msgprint({
+                    title: __("Popup Blocked"),
+                    message: __("Please allow popups in your browser."),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            print_window.document.open();
+            print_window.document.write(r.message.html || r.message);
+            print_window.document.close();
+
+            print_window.onload = function () {
+                print_window.focus();
+
+                setTimeout(() => {
+                    print_window.print();
+                }, 300);
+            };
+        }
+    });
 }

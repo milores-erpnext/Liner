@@ -13,7 +13,7 @@
  "fields": [
   {
    "fieldname": "type",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Type",
    "options": "\n20DV\n20HC"
@@ -29,7 +29,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-24 09:09:56.799096",
+ "modified": "2026-09-26 12:21:58.991861",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Equipment Table1",

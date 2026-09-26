@@ -122,7 +122,7 @@ class ImportExportOrder(Document):
 				timeout=20
 			)
 			response.raise_for_status()
-			print(f"\n\n\n{response.text}\n\n\n")
+			
 			self.parse_bl_status_response(response.text)
 		except Exception:
 			frappe.log_error(frappe.get_traceback(), "TAS Freight Tracking API")
@@ -882,7 +882,6 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 
 	for row in order.table_tvep:
 		if row.name == equipment_row_name:
-			print(f"\n\n\n{row}\n\n\n")
 			equipment_row = row
 			break
 
@@ -2115,3 +2114,176 @@ def create_other_charges_sales_invoice(import_export_order):
 			for item in sales_invoice.items
 		]
 	}
+
+@frappe.whitelist()
+def get_local_freight_charges(import_export_order):
+	io = frappe.get_doc("Import-Export Order", import_export_order)
+
+	# Find matching active Contract Agreement
+	contract_name = frappe.db.get_value(
+		"Tariff Charges",
+		{
+			"supplier": io.line,
+			"is_active": 1
+		},
+		"name"
+	)
+
+	if not contract_name:
+		frappe.throw(
+			"Contract Agreement not found for selected Customer and Supplier, or it is not Active."
+		)
+
+	contract = frappe.get_doc("Tariff Charges", contract_name)
+
+	# Clear existing rows
+	io.set("contract_agreement", [])
+
+	# Copy child table rows
+	for row in contract.table_vunr:
+		qty = frappe.db.get_value(
+			"Equipment Table1",
+			{"type": row.eq_type,"parent":import_export_order},
+			"nos"
+		) or 0
+		
+		io.append("contract_agreement", {
+			"item_code": row.item_code,
+			"item_name": row.item_name,
+			"vc": row.vc,
+			"c": row.c,
+			"party": row.party,
+			"rate_type": row.rate_type,
+			"eq_type": row.eq_type,
+			"rate": row.rate,
+			"cost_price": row.cost_price,
+			"line_cost_price": row.cost_price* flt(qty),
+			"line_total_amount": row.rate * flt(qty)
+		})
+	io.db_set("grand_total", sum(row.line_total_amount for row in io.contract_agreement), update_modified=False)	
+	io.db_set("total_liner", sum(row.line_cost_price for row in io.contract_agreement), update_modified=False)	
+	
+	io.save(ignore_permissions=True)
+
+	return {
+		"message": f"Local Freight Charges imported from {contract_name}."
+	}
+
+@frappe.whitelist()
+def print_gate_pass(docname):
+
+    doc = frappe.get_doc("Import-Export Order", docname)
+
+    html = frappe.get_print(
+        doctype="Import-Export Order",
+        name=doc.name,
+        print_format="Gate Pass"
+    )
+
+    return html
+
+@frappe.whitelist()
+def send_arrival_notification(import_export_order, stock_entry):
+    order = frappe.get_doc("Import-Export Order", import_export_order)
+
+    if not order.executive:
+        return
+
+    # Get Executive email from User
+    executive_email = frappe.db.get_value(
+        "Party Table",
+        {"party": "Consignee","parent":import_export_order},
+        "email"
+    )
+
+    if not executive_email:
+        frappe.throw(
+            f"No email address found for Executive: {order.executive}"
+        )
+
+    container_rows = ""
+
+    for row in order.table_tvep:
+        if row.container_no:
+            container_rows += f"""
+                <tr>
+                    <td>{row.container_no}</td>
+                    <td>{row.c_type or ""}</td>
+                </tr>
+            """
+
+    frappe.sendmail(
+        recipients=[executive_email],
+        subject=f"Arrival Notice - {order.name}",
+        message=f"""
+            <p>Dear {order.executive},</p>
+
+            <p>
+                Arrival Notice has been created for the following
+                Import-Export Order.
+            </p>
+
+            <table border="1"
+                   cellpadding="6"
+                   cellspacing="0"
+                   style="border-collapse: collapse;">
+
+                <tr>
+                    <td><b>Import-Export Order</b></td>
+                    <td>{order.name}</td>
+                </tr>
+
+                <tr>
+                    <td><b>Vessel</b></td>
+                    <td>{order.vessel or ""}</td>
+                </tr>
+
+                <tr>
+                    <td><b>Voyage No.</b></td>
+                    <td>{order.voyage_no or ""}</td>
+                </tr>
+
+                <tr>
+                    <td><b>Customer</b></td>
+                    <td>{order.customer or ""}</td>
+                </tr>
+
+                <tr>
+                    <td><b>Stock Entry</b></td>
+                    <td>{stock_entry}</td>
+                </tr>
+
+            </table>
+
+            <br>
+
+            <p><b>Containers</b></p>
+
+            <table border="1"
+                   cellpadding="6"
+                   cellspacing="0"
+                   style="border-collapse: collapse;">
+
+                <tr>
+                    <th>Container No</th>
+                    <th>Container Type</th>
+                </tr>
+
+                {container_rows}
+
+            </table>
+
+            <br>
+
+            <p>
+                Please check the Import-Export Order for further details.
+            </p>
+
+            <p>
+                Regards,<br>
+                ERP System
+            </p>
+        """
+    )
+
+    return True
