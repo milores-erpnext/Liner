@@ -146,6 +146,12 @@ app_license = "mit"
 # 	}
 # }
 
+doc_events = {
+    "Payment Entry": {
+        "on_submit": "liner.liner.overrides.payment_entry.on_submit"
+    }
+}
+
 # Scheduled Tasks
 # ---------------
 

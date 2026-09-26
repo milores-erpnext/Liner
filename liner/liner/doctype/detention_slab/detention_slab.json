@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "autoname": "DS.#####",
+ "creation": "2026-09-24 19:22:31.128411",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "line",
+  "line_name",
+  "port",
+  "container_type",
+  "column_break_ixwj",
+  "item",
+  "item_name",
+  "currency",
+  "section_break_uaxm",
+  "charges"
+ ],
+ "fields": [
+  {
+   "fieldname": "line",
+   "fieldtype": "Link",
+   "label": "Line",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "port",
+   "fieldtype": "Data",
+   "label": "Port"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "charges",
+   "fieldtype": "Table",
+   "label": "Charges",
+   "options": "Charges Slab"
+  },
+  {
+   "fetch_from": "line.supplier_name",
+   "fieldname": "line_name",
+   "fieldtype": "Data",
+   "label": "Line Name"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "link_filters": "[[\"Item\",\"is_stock_item\",\"=\",0]]",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ixwj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "item.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name"
+  },
+  {
+   "fieldname": "section_break_uaxm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "container_type",
+   "fieldtype": "Link",
+   "label": "Container Type",
+   "options": "Container Type",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-24 19:57:41.290555",
+ "modified_by": "Administrator",
+ "module": "Liner",
+ "name": "Detention Slab",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

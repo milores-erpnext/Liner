@@ -2,64 +2,61 @@
  "actions": [],
  "allow_bulk_edit": 1,
  "allow_rename": 1,
- "creation": "2026-08-28 18:53:47.735107",
+ "creation": "2026-09-26 01:23:59.220427",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "from",
-  "to",
-  "vessel",
-  "voyage",
-  "etd",
-  "eta"
+  "item_code",
+  "item_name",
+  "qty",
+  "rate",
+  "amount"
  ],
  "fields": [
   {
-   "fieldname": "from",
-   "fieldtype": "Data",
+   "fieldname": "item_code",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "From"
+   "label": "Item Code",
+   "link_filters": "[[\"Item\",\"is_stock_item\",\"=\",0]]",
+   "options": "Item"
   },
   {
-   "fieldname": "to",
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "To"
+   "label": "Item Name"
   },
   {
-   "fieldname": "vessel",
-   "fieldtype": "Data",
+   "fieldname": "qty",
+   "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Vessel"
+   "label": "Qty"
   },
   {
-   "fieldname": "voyage",
-   "fieldtype": "Data",
+   "fieldname": "rate",
+   "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Voyage"
+   "label": "Rate"
   },
   {
-   "fieldname": "etd",
-   "fieldtype": "Data",
+   "fieldname": "amount",
+   "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "ETD"
-  },
-  {
-   "fieldname": "eta",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "ETA"
+   "label": "Amount",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-24 09:08:34.638347",
+ "modified": "2026-09-26 01:29:50.246148",
  "modified_by": "Administrator",
  "module": "Liner",
- "name": "Container Tracking",
+ "name": "Other Charges Table",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",

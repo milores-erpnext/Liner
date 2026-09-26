@@ -14,86 +14,105 @@
   "party",
   "rate_type",
   "eq_type",
-  "qty",
   "rate",
   "cost_price",
-  "amount",
-  "line_cost_price"
+  "line_cost_price",
+  "line_total_amount"
  ],
  "fields": [
   {
+   "columns": 1,
    "fieldname": "item_code",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Item Code",
+   "link_filters": "[[\"Item\",\"is_stock_item\",\"=\",0]]",
    "options": "Item"
   },
   {
+   "columns": 2,
    "fetch_from": "item_code.item_name",
    "fieldname": "item_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Item Name"
   },
   {
+   "columns": 1,
    "fieldname": "vc",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "V/C",
    "options": "\nV\nC"
   },
   {
+   "columns": 1,
    "default": "0",
    "fieldname": "c",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "C"
   },
   {
+   "columns": 1,
    "fieldname": "party",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Party",
    "options": "Customer"
   },
   {
+   "columns": 1,
    "fieldname": "rate_type",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Rate Type",
    "options": "UOM"
   },
   {
+   "columns": 1,
    "fieldname": "eq_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Eq. Type",
    "options": "\n20DV\n20HC\n20TC\n40DV\n40HC\n40RE\n40TC\n400T\n200T\n20RE\n45 HC\n40FLAT\n20FLAT"
   },
   {
-   "fieldname": "qty",
-   "fieldtype": "Int",
-   "label": "Qty"
-  },
-  {
+   "columns": 1,
    "fieldname": "rate",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Rate"
   },
   {
-   "fieldname": "amount",
-   "fieldtype": "Float",
-   "label": "Line Total Amount"
-  },
-  {
+   "columns": 1,
    "fieldname": "cost_price",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Cost Price"
   },
   {
+   "columns": 1,
    "fieldname": "line_cost_price",
    "fieldtype": "Float",
-   "label": "Line Total Cost Price"
+   "in_list_view": 1,
+   "label": "Line Cost Price",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "line_total_amount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Line Total Amount",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-09 11:46:10.962823",
+ "modified": "2026-09-25 10:36:48.510353",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Contract Agreement Table",

@@ -86,7 +86,17 @@
   "freightcharges_tab",
   "get_local_freight_charges",
   "contract_agreement",
+  "section_break_ekda",
   "grand_total",
+  "create_freight_charges",
+  "column_break_qitf",
+  "total_liner",
+  "create_liner_charges",
+  "section_break_cggy",
+  "other_charges",
+  "total_other_charges",
+  "create_other_charges",
+  "paid_amount",
   "job_expenses_tab",
   "freights",
   "bill_of_lading_tab",
@@ -273,7 +283,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "\nDraft\nOrdered\nShipped\nCompleted\nCancelled"
+   "options": "\nDraft\nIFD\nDCO\nEMM\nDSO\nBFF"
   },
   {
    "fieldname": "remarks",
@@ -438,11 +448,13 @@
   {
    "fieldname": "table_cgpc",
    "fieldtype": "Table",
+   "label": "Container Type",
    "options": "Equipment Table1"
   },
   {
    "fieldname": "table_tvep",
    "fieldtype": "Table",
+   "label": "Container Details",
    "options": "Equipment Table2"
   },
   {
@@ -516,19 +528,19 @@
   {
    "fieldname": "get_local_freight_charges",
    "fieldtype": "Button",
-   "label": "Get Local Freight Charges"
+   "label": "Get Tariff Charges"
   },
   {
    "fieldname": "contract_agreement",
    "fieldtype": "Table",
-   "label": "Contract Agreement",
+   "label": "Tariff Charges",
    "options": "Contract Agreement Table",
    "read_only": 1
   },
   {
    "fieldname": "grand_total",
    "fieldtype": "Float",
-   "label": "Grand Total",
+   "label": "Total Freight",
    "read_only": 1
   },
   {
@@ -619,13 +631,63 @@
    "label": "Order Type",
    "options": "\nImport\nExport",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_ekda",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_qitf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paid_amount",
+   "fieldtype": "Float",
+   "label": "Paid Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "create_freight_charges",
+   "fieldtype": "Button",
+   "label": "Create Freight Charges"
+  },
+  {
+   "fieldname": "section_break_cggy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "other_charges",
+   "fieldtype": "Table",
+   "label": "Other Charges",
+   "options": "Other Charges Table"
+  },
+  {
+   "fieldname": "create_other_charges",
+   "fieldtype": "Button",
+   "label": "Create Other Charges"
+  },
+  {
+   "fieldname": "create_liner_charges",
+   "fieldtype": "Button",
+   "label": "Create Liner Charges"
+  },
+  {
+   "fieldname": "total_liner",
+   "fieldtype": "Float",
+   "label": "Total Liner",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_other_charges",
+   "fieldtype": "Float",
+   "label": "Total Other Charges"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-09 12:21:00.350624",
+ "modified": "2026-09-26 10:13:19.585108",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Import-Export Order",

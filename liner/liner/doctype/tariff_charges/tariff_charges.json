@@ -2,14 +2,14 @@
  "actions": [],
  "allow_bulk_edit": 1,
  "allow_rename": 1,
+ "autoname": "TR-.YY.-.#####",
  "creation": "2026-08-20 13:45:10.986550",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "customer",
+  "details_section",
   "supplier",
-  "valid_date_from",
-  "valid_date_to",
+  "line_name",
   "column_break_mukd",
   "is_active",
   "currency_and_price_list_section",
@@ -21,41 +21,21 @@
   "plc_conversion_rate",
   "ignore_pricing_rule",
   "section_break_epbd",
-  "table_vunr",
-  "section_break_gvwj",
-  "cost_price",
-  "base_grand_total",
-  "grand_total"
+  "table_vunr"
  ],
  "fields": [
   {
-   "fieldname": "customer",
-   "fieldtype": "Link",
-   "label": "Customer",
-   "options": "Customer"
-  },
-  {
    "fieldname": "supplier",
    "fieldtype": "Link",
-   "label": "Supplier",
+   "label": "Line",
    "options": "Supplier"
-  },
-  {
-   "fieldname": "valid_date_from",
-   "fieldtype": "Date",
-   "label": "Valid Date From"
-  },
-  {
-   "fieldname": "valid_date_to",
-   "fieldtype": "Date",
-   "label": "Valid Date To"
   },
   {
    "fieldname": "column_break_mukd",
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "is_active",
    "fieldtype": "Check",
    "label": "Is Active"
@@ -113,32 +93,25 @@
    "options": "Contract Agreement Table"
   },
   {
-   "fieldname": "section_break_gvwj",
-   "fieldtype": "Section Break"
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
   },
   {
-   "fieldname": "cost_price",
-   "fieldtype": "Float",
-   "label": "Cost Price"
-  },
-  {
-   "fieldname": "base_grand_total",
-   "fieldtype": "Float",
-   "label": "Base Grand Total"
-  },
-  {
-   "fieldname": "grand_total",
-   "fieldtype": "Float",
-   "label": "Grand Total"
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "line_name",
+   "fieldtype": "Data",
+   "label": "Line Name"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-07 23:17:24.814092",
+ "modified": "2026-09-25 10:38:28.417624",
  "modified_by": "Administrator",
  "module": "Liner",
- "name": "Contract Agreement",
+ "name": "Tariff Charges",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

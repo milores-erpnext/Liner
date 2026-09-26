@@ -1,12 +1,12 @@
 // Copyright (c) 2026, Milores and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Contract Agreement", {
+// frappe.ui.form.on("Tariff Charges", {
 // 	refresh(frm) {
 
 // 	},
 // });
-frappe.ui.form.on("Contract Agreement Table", {
+frappe.ui.form.on("Tariff Charges Table", {
     qty(frm, cdt, cdn) {
         calculate_amount(cdt, cdn);
     },
