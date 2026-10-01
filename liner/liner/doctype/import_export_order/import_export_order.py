@@ -2843,7 +2843,7 @@ def get_arrived_containers_for_delivery(import_export_order):
             WHERE se.docstatus = 1
               AND se.stock_entry_type = 'Material Receipt'
               AND se.custom_importexport_order = %(order)s
-              AND sed.importexport_order = %(order)s
+              AND sed.custom_importexport_order = %(order)s
               AND sed.item_code = %(item)s
             ORDER BY se.creation DESC
             LIMIT 1
@@ -3356,4 +3356,3 @@ def create_export_stock_entries(import_export_order, warehouse, containers):
     frappe.db.commit()
 
     return created_entries
-	
