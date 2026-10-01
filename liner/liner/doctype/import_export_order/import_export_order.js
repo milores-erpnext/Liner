@@ -19,14 +19,26 @@ frappe.ui.form.on("Import-Export Order", {
 		frm.add_custom_button(__("EDI Connect with CTC"));
 		frm.add_custom_button(__("Delivery Order"), function () {
 			show_delivery_order_dialog(frm);
-		}, __("Print"));
+		}, __("Create"));
 		frm.add_custom_button(__("Gate Pass"), function () {
 			make_gate_pass(frm);
 		}, __("Print"));
 		frm.add_custom_button(__("Detention Calculation"), function () {
 			make_detention_calculation(frm);
 		}, __("Print"));
+		frm.add_custom_button(__("Arrival Order"), function () {
+			show_arrival_order_dialog(frm);
+		}, __("Create"));
+		frm.add_custom_button(__("Return Container"), function () {
+			make_return_stock_entry(frm);
+		}, __("Create"));
 		frm.add_custom_button(__("Payment Entry"), () => make_payment_entry(frm),__("Create"));
+		
+		// if (frm.doc.order_type === "Export") {
+			frm.add_custom_button(__("Container Export"), function () {
+				make_export_stock_entry(frm);
+			}, __("Create"));
+		// }
 		set_status_indicator(frm);
 		add_status_dropdown(frm);
 	},
@@ -380,20 +392,14 @@ function add_status_dropdown(frm) {
             __("Status")
         );
     });
-
-    // NOTE: relabeling the group button to show current status is removed
-    // for now to isolate whether the dropdown itself renders correctly.
-    // We'll add that back once this is confirmed working.
 }
 
 function set_status(frm, new_status) {
     if (frm.is_new()) {
-        // doc doesn't exist in the DB yet — just update the field locally,
-        // don't force a full save (which would trigger mandatory-field
-        // validation before the user is ready)
         frm.set_value("status", new_status);
     } else {
-        frm.set_value("status", new_status).then(() => frm.save());
+        frappe.model.set_value(frm.doctype, frm.docname, "status", new_status)
+            .then(() => frm.save());
     }
 }
 
@@ -412,436 +418,544 @@ function make_payment_entry(frm) {
 }
 
 async function make_arrival_notice(frm) {
-	const warehouse_name = "Port";
+	await frappe.call({
+		method:
+			"liner.liner.doctype.import_export_order.import_export_order.send_arrival_notification",
 
-	// ---------------------------------------------------------
-	// Check Warehouse
-	// ---------------------------------------------------------
-	let warehouses = await frappe.db.get_list("Warehouse", {
-		filters: {
-			warehouse_name: warehouse_name,
-			company: frm.doc.company
-		},
-		fields: ["name"],
-		limit: 1
-	});
-
-	let warehouse = warehouses.length
-		? warehouses[0].name
-		: null;
-
-
-	// ---------------------------------------------------------
-	// Create Warehouse if not available
-	// ---------------------------------------------------------
-	if (!warehouse) {
-
-		let warehouse_doc = await frappe.call({
-			method: "frappe.client.insert",
-			args: {
-				doc: {
-					doctype: "Warehouse",
-					warehouse_name: warehouse_name,
-					company: frm.doc.company
-				}
-			}
-		});
-
-		warehouse = warehouse_doc.message.name;
-	}
-
-
-	// ---------------------------------------------------------
-	// Create Stock Entry
-	// ---------------------------------------------------------
-	let stock_entry = frappe.model.get_new_doc("Stock Entry");
-
-	stock_entry.stock_entry_type = "Material Receipt";
-	stock_entry.company = frm.doc.company;
-
-
-	// ---------------------------------------------------------
-	// Add Items
-	// ---------------------------------------------------------
-	frm.doc.table_tvep.forEach(row => {
-
-		if (!row.container_no) {
-			return;
-		}
-
-		let item = frappe.model.add_child(
-			stock_entry,
-			"Stock Entry Detail",
-			"items"
-		);
-
-		item.item_code = row.container_no;
-		item.qty = 1;
-		item.t_warehouse = warehouse;
-		item.allow_zero_valuation_rate = 1;
-	});
-
-
-	// ---------------------------------------------------------
-	// Save Stock Entry
-	// ---------------------------------------------------------
-	let saved_stock_entry = await frappe.call({
-		method: "frappe.client.insert",
 		args: {
-			doc: stock_entry
+			import_export_order: frm.doc.name
 		}
 	});
 
-	// ---------------------------------------------------------
-	// Send Arrival Notification to Executive
-	// ---------------------------------------------------------
-	if (saved_stock_entry.message) {
-
-		await frappe.call({
-			method:
-				"liner.liner.doctype.import_export_order.import_export_order.send_arrival_notification",
-
-			args: {
-				import_export_order: frm.doc.name,
-				stock_entry: saved_stock_entry.message.name
-			}
-		});
-
-		frappe.show_alert({
-			message: __("Arrival Notice created and notification sent to Executive."),
-			indicator: "green"
-		});
-	}
+	frappe.show_alert({
+		message: __("Arrival notification sent to Consignee & Teams."),
+		indicator: "green"
+	});
 }
  
+// function show_delivery_order_dialog(frm) {
+
+// 	const containers = frm.doc.table_tvep || [];
+
+// 	if (!containers.length) {
+// 		frappe.msgprint({
+// 			title: __("No Containers"),
+// 			message: __("There are no containers available in this Import-Export Order."),
+// 			indicator: "orange"
+// 		});
+// 		return;
+// 	}
+
+// 	const rows_html = containers.map((row, index) => {
+
+// 		const is_printed = cint(row.delivery_order_printed) === 1;
+
+// 		return `
+// 			<tr>
+// 				<td style="
+// 					width:50px;
+// 					text-align:center;
+// 					vertical-align:middle;
+// 				">
+// 					<input
+// 						type="checkbox"
+// 						class="delivery-container-checkbox"
+// 						data-index="${index}"
+// 						${is_printed ? "disabled" : ""}
+// 					>
+// 				</td>
+
+// 				<td style="vertical-align:middle;">
+// 					<strong>
+// 						${frappe.utils.escape_html(row.container_no || "")}
+// 					</strong>
+// 				</td>
+
+// 				<td style="vertical-align:middle;">
+// 					${frappe.utils.escape_html(row.c_type || "")}
+// 				</td>
+
+// 				<td style="
+// 					width:120px;
+// 					text-align:center;
+// 					vertical-align:middle;
+// 					font-weight:bold;
+// 					color:${is_printed ? "#28a745":"#888"};
+// 				">
+// 					${is_printed ? __("Printed") : __("Not Printed")}
+// 				</td>
+// 			</tr>
+// 		`;
+
+// 	}).join("");
+
+
+// 	const dialog = new frappe.ui.Dialog({
+
+// 		title: __("Select Containers for Delivery Order"),
+
+// 		size: "large",
+
+// 		fields: [
+// 			{
+// 				fieldtype: "HTML",
+// 				fieldname: "container_list"
+// 			}
+// 		],
+
+// 		primary_action_label: __("Print Delivery Order"),
+
+// 		primary_action: function () {
+
+// 			const selected_containers = [];
+
+// 			dialog.$wrapper
+// 				.find(".delivery-container-checkbox:checked")
+// 				.each(function () {
+
+// 					const index = parseInt(
+// 						$(this).attr("data-index"),
+// 						10
+// 					);
+
+// 					const row = containers[index];
+
+// 					if (!row) {
+// 						return;
+// 					}
+
+// 					// Do not allow already printed containers
+// 					if (cint(row.delivery_order_printed) === 1) {
+// 						return;
+// 					}
+
+// 					selected_containers.push({
+// 						name: row.name,
+// 						container_no: row.container_no,
+// 						c_type: row.c_type
+// 					});
+// 				});
+
+
+// 			if (!selected_containers.length) {
+
+// 				frappe.msgprint({
+// 					title: __("No Container Selected"),
+// 					message: __("Please select at least one container that has not been printed."),
+// 					indicator: "orange"
+// 				});
+
+// 				return;
+// 			}
+// 			frappe.call({
+// 				method:
+// 					"liner.liner.doctype.import_export_order.import_export_order.print_delivery_order",
+// 				args: {
+// 					doctype: frm.doc.doctype,
+// 					docname: frm.doc.name,
+// 					containers: JSON.stringify(selected_containers),
+// 					doc:frm.doc
+// 				},
+
+// 				freeze: true,
+// 				freeze_message: __("Preparing Delivery Order..."),
+// 				callback: function (r) {
+// 					if (r.exc) {
+// 						return;
+// 					}
+
+// 					if (!r.message) {
+
+// 						frappe.msgprint({
+// 							title: __("Error"),
+// 							message: __("Unable to generate Delivery Order."),
+// 							indicator: "red"
+// 						});
+
+// 						return;
+// 					}
+
+
+// 					dialog.hide();
+
+
+// 					/*
+// 					 * Reload the document so the
+// 					 * delivery_order_printed values are updated
+// 					 * in the child table.
+// 					 */
+// 					frm.reload_doc().then(() => {
+
+// 						const print_window = window.open(
+// 							"",
+// 							"_blank"
+// 						);
+
+// 						if (!print_window) {
+
+// 							frappe.msgprint({
+// 								title: __("Popup Blocked"),
+// 								message: __("Please allow popups in your browser to print the Delivery Order."),
+// 								indicator: "orange"
+// 							});
+
+// 							return;
+// 						}
+
+
+// 						print_window.document.open();
+
+// 						print_window.document.write(r.message);
+
+// 						print_window.document.close();
+
+
+// 						print_window.onload = function () {
+
+// 							print_window.focus();
+
+// 							setTimeout(() => {
+// 								print_window.print();
+// 							}, 300);
+
+// 						};
+
+// 					});
+
+// 				}
+
+// 			});
+
+// 		}
+
+// 	});
+
+
+// 	/* =========================================================
+// 	   SET DIALOG HTML
+// 	   ========================================================= */
+
+// 	dialog.fields_dict.container_list.$wrapper.html(`
+
+// 		<div style="
+// 			margin-bottom:10px;
+// 			font-size:13px;
+// 			color:#666;
+// 		">
+// 			${__("Select the containers to include in the Delivery Order.")}
+// 		</div>
+
+// 		<div style="
+// 			max-height:500px;
+// 			overflow-y:auto;
+// 			border:1px solid #d1d8dd;
+// 			border-radius:4px;
+// 		">
+
+// 			<table
+// 				class="table table-bordered"
+// 				style="
+// 					width:100%;
+// 					margin:0;
+// 					border-collapse:collapse;
+// 				"
+// 			>
+
+// 				<thead>
+// 					<tr>
+
+// 						<th style="
+// 							width:50px;
+// 							text-align:center;
+// 							vertical-align:middle;
+// 						">
+// 							<input
+// 								type="checkbox"
+// 								class="select-all-containers"
+// 							>
+// 						</th>
+
+// 						<th>
+// 							${__("Container No")}
+// 						</th>
+
+// 						<th>
+// 							${__("Container Type")}
+// 						</th>
+
+// 						<th style="
+// 							width:120px;
+// 							text-align:center;
+// 						">
+// 							${__("Status")}
+// 						</th>
+
+// 					</tr>
+// 				</thead>
+
+// 				<tbody>
+// 					${rows_html}
+// 				</tbody>
+
+// 			</table>
+
+// 		</div>
+
+// 	`);
+
+
+// 	/* =========================================================
+// 	   SELECT ALL
+// 	   Only selects NOT PRINTED containers
+// 	   ========================================================= */
+
+// 	dialog.$wrapper.on(
+// 		"change",
+// 		".select-all-containers",
+// 		function () {
+
+// 			const checked = $(this).is(":checked");
+
+// 			dialog.$wrapper
+// 				.find(".delivery-container-checkbox:not(:disabled)")
+// 				.prop("checked", checked);
+// 		}
+// 	);
+
+
+// 	/* =========================================================
+// 	   UPDATE SELECT ALL STATE
+// 	   ========================================================= */
+
+// 	dialog.$wrapper.on(
+// 		"change",
+// 		".delivery-container-checkbox",
+// 		function () {
+
+// 			const total_selectable =
+// 				dialog.$wrapper
+// 					.find(".delivery-container-checkbox:not(:disabled)")
+// 					.length;
+
+// 			const total_selected =
+// 				dialog.$wrapper
+// 					.find(".delivery-container-checkbox:not(:disabled):checked")
+// 					.length;
+
+// 			dialog.$wrapper
+// 				.find(".select-all-containers")
+// 				.prop(
+// 					"checked",
+// 					total_selectable > 0 &&
+// 					total_selectable === total_selected
+// 				);
+
+// 		}
+// 	);
+
+
+// 	dialog.show();
+// }
 function show_delivery_order_dialog(frm) {
-
-	const containers = frm.doc.table_tvep || [];
-
-	if (!containers.length) {
-		frappe.msgprint({
-			title: __("No Containers"),
-			message: __("There are no containers available in this Import-Export Order."),
-			indicator: "orange"
-		});
-		return;
-	}
-
-	const rows_html = containers.map((row, index) => {
-
-		const is_printed = cint(row.delivery_order_printed) === 1;
-
-		return `
-			<tr>
-				<td style="
-					width:50px;
-					text-align:center;
-					vertical-align:middle;
-				">
-					<input
-						type="checkbox"
-						class="delivery-container-checkbox"
-						data-index="${index}"
-						${is_printed ? "disabled" : ""}
-					>
-				</td>
-
-				<td style="vertical-align:middle;">
-					<strong>
-						${frappe.utils.escape_html(row.container_no || "")}
-					</strong>
-				</td>
-
-				<td style="vertical-align:middle;">
-					${frappe.utils.escape_html(row.c_type || "")}
-				</td>
-
-				<td style="
-					width:120px;
-					text-align:center;
-					vertical-align:middle;
-					font-weight:bold;
-					color:${is_printed ? "#28a745":"#888"};
-				">
-					${is_printed ? __("Printed") : __("Not Printed")}
-				</td>
-			</tr>
-		`;
-
-	}).join("");
-
-
-	const dialog = new frappe.ui.Dialog({
-
-		title: __("Select Containers for Delivery Order"),
-
-		size: "large",
-
-		fields: [
-			{
-				fieldtype: "HTML",
-				fieldname: "container_list"
-			}
-		],
-
-		primary_action_label: __("Print Delivery Order"),
-
-		primary_action: function () {
-
-			const selected_containers = [];
-
-			dialog.$wrapper
-				.find(".delivery-container-checkbox:checked")
-				.each(function () {
-
-					const index = parseInt(
-						$(this).attr("data-index"),
-						10
-					);
-
-					const row = containers[index];
-
-					if (!row) {
-						return;
-					}
-
-					// Do not allow already printed containers
-					if (cint(row.delivery_order_printed) === 1) {
-						return;
-					}
-
-					selected_containers.push({
-						name: row.name,
-						container_no: row.container_no,
-						c_type: row.c_type
-					});
-				});
-
-
-			if (!selected_containers.length) {
-
-				frappe.msgprint({
-					title: __("No Container Selected"),
-					message: __("Please select at least one container that has not been printed."),
-					indicator: "orange"
-				});
-
-				return;
-			}
-
-
-			frappe.call({
-
-				method:
-					"liner.liner.doctype.import_export_order.import_export_order.print_delivery_order",
-
-				args: {
-					doctype: frm.doc.doctype,
-					docname: frm.doc.name,
-					containers: JSON.stringify(selected_containers)
-				},
-
-				freeze: true,
-
-				freeze_message: __("Preparing Delivery Order..."),
-
-				callback: function (r) {
-
-					if (r.exc) {
-						return;
-					}
-
-					if (!r.message) {
-
-						frappe.msgprint({
-							title: __("Error"),
-							message: __("Unable to generate Delivery Order."),
-							indicator: "red"
-						});
-
-						return;
-					}
-
-
-					dialog.hide();
-
-
-					/*
-					 * Reload the document so the
-					 * delivery_order_printed values are updated
-					 * in the child table.
-					 */
-					frm.reload_doc().then(() => {
-
-						const print_window = window.open(
-							"",
-							"_blank"
-						);
-
-						if (!print_window) {
-
-							frappe.msgprint({
-								title: __("Popup Blocked"),
-								message: __("Please allow popups in your browser to print the Delivery Order."),
-								indicator: "orange"
-							});
-
-							return;
-						}
-
-
-						print_window.document.open();
-
-						print_window.document.write(r.message);
-
-						print_window.document.close();
-
-
-						print_window.onload = function () {
-
-							print_window.focus();
-
-							setTimeout(() => {
-								print_window.print();
-							}, 300);
-
-						};
-
-					});
-
-				}
-
-			});
-
-		}
-
-	});
-
-
-	/* =========================================================
-	   SET DIALOG HTML
-	   ========================================================= */
-
-	dialog.fields_dict.container_list.$wrapper.html(`
-
-		<div style="
-			margin-bottom:10px;
-			font-size:13px;
-			color:#666;
-		">
-			${__("Select the containers to include in the Delivery Order.")}
-		</div>
-
-		<div style="
-			max-height:500px;
-			overflow-y:auto;
-			border:1px solid #d1d8dd;
-			border-radius:4px;
-		">
-
-			<table
-				class="table table-bordered"
-				style="
-					width:100%;
-					margin:0;
-					border-collapse:collapse;
-				"
-			>
-
-				<thead>
-					<tr>
-
-						<th style="
-							width:50px;
-							text-align:center;
-							vertical-align:middle;
-						">
-							<input
-								type="checkbox"
-								class="select-all-containers"
-							>
-						</th>
-
-						<th>
-							${__("Container No")}
-						</th>
-
-						<th>
-							${__("Container Type")}
-						</th>
-
-						<th style="
-							width:120px;
-							text-align:center;
-						">
-							${__("Status")}
-						</th>
-
-					</tr>
-				</thead>
-
-				<tbody>
-					${rows_html}
-				</tbody>
-
-			</table>
-
-		</div>
-
-	`);
-
-
-	/* =========================================================
-	   SELECT ALL
-	   Only selects NOT PRINTED containers
-	   ========================================================= */
-
-	dialog.$wrapper.on(
-		"change",
-		".select-all-containers",
-		function () {
-
-			const checked = $(this).is(":checked");
-
-			dialog.$wrapper
-				.find(".delivery-container-checkbox:not(:disabled)")
-				.prop("checked", checked);
-		}
-	);
-
-
-	/* =========================================================
-	   UPDATE SELECT ALL STATE
-	   ========================================================= */
-
-	dialog.$wrapper.on(
-		"change",
-		".delivery-container-checkbox",
-		function () {
-
-			const total_selectable =
-				dialog.$wrapper
-					.find(".delivery-container-checkbox:not(:disabled)")
-					.length;
-
-			const total_selected =
-				dialog.$wrapper
-					.find(".delivery-container-checkbox:not(:disabled):checked")
-					.length;
-
-			dialog.$wrapper
-				.find(".select-all-containers")
-				.prop(
-					"checked",
-					total_selectable > 0 &&
-					total_selectable === total_selected
-				);
-
-		}
-	);
-
-
-	dialog.show();
+    if (frm.is_new()) {
+        frappe.msgprint(__("Please save the document first."));
+        return;
+    }
+
+    frappe.call({
+        method:
+            "liner.liner.doctype.import_export_order.import_export_order.get_arrived_containers_for_delivery",
+        args: {
+            import_export_order: frm.doc.name
+        },
+        freeze: true,
+        freeze_message: __("Checking arrived containers..."),
+        callback: function (r) {
+            if (r.exc) {
+                return;
+            }
+
+            const containers = r.message || [];
+
+            if (!containers.length) {
+                frappe.msgprint({
+                    title: __("No Containers"),
+                    message: __(
+                        "No arrived containers are pending delivery. " +
+                            "Please create an Arrival Stock Entry first, " +
+                            "or all containers have already been delivered."
+                    ),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            show_delivery_order_dialog_with_containers(frm, containers);
+        }
+    });
+}
+
+function show_delivery_order_dialog_with_containers(frm, containers) {
+    const rows_html = containers
+        .map((row, index) => {
+            return `
+            <tr>
+                <td style="width:50px;text-align:center;vertical-align:middle;">
+                    <input type="checkbox"
+                        class="delivery-container-checkbox"
+                        data-index="${index}">
+                </td>
+                <td style="vertical-align:middle;">
+                    <strong>${frappe.utils.escape_html(row.container_no || "")}</strong>
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.c_type || "")}
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.seal_no || "")}
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.source_warehouse || "")}
+                </td>
+            </tr>
+        `;
+        })
+        .join("");
+
+    const dialog = new frappe.ui.Dialog({
+        title: __("Select Containers for Delivery Order"),
+        size: "large",
+        fields: [
+            {
+                fieldtype: "HTML",
+                fieldname: "container_list"
+            }
+        ],
+        primary_action_label: __("Create Delivery Order & Stock Entry"),
+        primary_action: function () {
+            const selected_containers = [];
+
+            dialog.$wrapper
+                .find(".delivery-container-checkbox:checked")
+                .each(function () {
+                    const index = parseInt($(this).attr("data-index"), 10);
+                    const row = containers[index];
+                    if (!row) {
+                        return;
+                    }
+                    selected_containers.push({
+                        name: row.name,
+                        container_no: row.container_no,
+                        c_type: row.c_type,
+                        seal_no: row.seal_no,
+                        source_warehouse: row.source_warehouse,
+                        qty: row.qty,
+                        uom: row.uom
+                    });
+                });
+
+            if (!selected_containers.length) {
+                frappe.msgprint({
+                    title: __("No Container Selected"),
+                    message: __("Please select at least one container."),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            frappe.call({
+                method:
+                    "liner.liner.doctype.import_export_order.import_export_order.create_delivery_order_with_stock_entry",
+                args: {
+                    doctype: frm.doc.doctype,
+                    docname: frm.doc.name,
+                    containers: JSON.stringify(selected_containers)
+                },
+                freeze: true,
+                freeze_message: __("Creating Delivery Order & Stock Entry..."),
+                callback: function (r) {
+                    if (r.exc || !r.message) {
+                        return;
+                    }
+
+                    dialog.hide();
+
+                    const do_name = r.message.delivery_order;
+                    const se_names = (r.message.stock_entries || []).join(", ");
+
+                    frappe.show_alert({
+                        message: __(
+                            "Delivery Order {0} created. Stock Entry: {1}",
+                            [do_name, se_names]
+                        ),
+                        indicator: "green"
+                    });
+
+                    frm.reload_doc();
+                }
+            });
+        }
+    });
+
+    dialog.fields_dict.container_list.$wrapper.html(`
+        <div style="margin-bottom:10px;font-size:13px;color:#666;">
+            ${__("Only containers that have already arrived (Material Receipt) are shown.")}
+        </div>
+        <div style="
+            max-height:500px;
+            overflow-y:auto;
+            border:1px solid #d1d8dd;
+            border-radius:4px;
+        ">
+            <table class="table table-bordered"
+                style="width:100%;margin:0;border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="width:50px;text-align:center;">
+                            <input type="checkbox" class="select-all-delivery-containers">
+                        </th>
+                        <th>${__("Container No")}</th>
+                        <th>${__("Container Type")}</th>
+                        <th>${__("Seal No")}</th>
+                        <th>${__("Source Warehouse")}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows_html}
+                </tbody>
+            </table>
+        </div>
+    `);
+
+    dialog.$wrapper.on(
+        "change",
+        ".select-all-delivery-containers",
+        function () {
+            const checked = $(this).is(":checked");
+            dialog.$wrapper
+                .find(".delivery-container-checkbox")
+                .prop("checked", checked);
+        }
+    );
+
+    dialog.$wrapper.on(
+        "change",
+        ".delivery-container-checkbox",
+        function () {
+            const total = dialog.$wrapper.find(
+                ".delivery-container-checkbox"
+            ).length;
+            const selected = dialog.$wrapper.find(
+                ".delivery-container-checkbox:checked"
+            ).length;
+
+            dialog.$wrapper
+                .find(".select-all-delivery-containers")
+                .prop("checked", total > 0 && total === selected);
+        }
+    );
+
+    dialog.show();
 }
 
 frappe.ui.form.on("Equipment Table2", {
@@ -1223,4 +1337,706 @@ function make_detention_calculation(frm) {
             };
         }
     });
+}
+
+function show_arrival_order_dialog(frm) {
+
+    frappe.call({
+        method:
+            "liner.liner.doctype.import_export_order.import_export_order.get_pending_arrival_containers",
+
+        args: {
+            import_export_order: frm.doc.name
+        },
+
+        freeze: true,
+        freeze_message: __("Checking Arrival Order containers..."),
+
+        callback: function (r) {
+
+            if (r.exc) {
+                return;
+            }
+
+            const containers = r.message || [];
+
+            if (!containers.length) {
+                frappe.msgprint({
+                    title: __("No Containers"),
+                    message: __(
+                        "All containers have already been processed for Arrival Order."
+                    ),
+                    indicator: "green"
+                });
+                return;
+            }
+
+            show_arrival_order_dialog_with_containers(
+                frm,
+                containers
+            );
+        }
+    });
+}
+
+function show_arrival_order_dialog_with_containers(frm, containers) {
+    const rows_html = containers.map((row, index) => {
+        return `
+            <tr>
+                <td style="width:50px;text-align:center;vertical-align:middle;">
+                    <input type="checkbox"
+                        class="arrival-container-checkbox"
+                        data-index="${index}">
+                </td>
+
+                <td style="vertical-align:middle;">
+                    <strong>${frappe.utils.escape_html(row.container_no || "")}</strong>
+                </td>
+
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.c_type || "")}
+                </td>
+
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.seal_no || "")}
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    const dialog = new frappe.ui.Dialog({
+        title: __("Arrival Order"),
+        size: "large",
+
+        fields: [
+            {
+                fieldname: "warehouse",
+                label: __("Warehouse"),
+                fieldtype: "Link",
+                options: "Warehouse",
+                reqd: 1,
+                get_query() {
+                    return {
+                        filters: {
+                            is_group: 0,
+                            company: frm.doc.company
+                        }
+                    };
+                }
+            },
+            {
+                fieldname: "container_list",
+                fieldtype: "HTML"
+            }
+        ],
+
+        primary_action_label: __("Create Stock Entry"),
+
+        primary_action: function (values) {
+
+            const selected_containers = [];
+
+            dialog.$wrapper
+                .find(".arrival-container-checkbox:checked")
+                .each(function () {
+
+                    const index = parseInt(
+                        $(this).attr("data-index"),
+                        10
+                    );
+
+                    const row = containers[index];
+
+                    if (!row) {
+                        return;
+                    }
+
+                    selected_containers.push({
+                        name: row.name,
+                        container_no: row.container_no,
+                        c_type: row.c_type,
+                        seal_no: row.seal_no
+                    });
+                });
+
+            if (!selected_containers.length) {
+                frappe.msgprint({
+                    title: __("No Container Selected"),
+                    message: __("Please select at least one container."),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            if (!values.warehouse) {
+                frappe.msgprint({
+                    title: __("Warehouse Required"),
+                    message: __("Please select a Warehouse."),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            frappe.call({
+                method:
+                    "liner.liner.doctype.import_export_order.import_export_order.create_arrival_stock_entries",
+
+                args: {
+                    import_export_order: frm.doc.name,
+                    warehouse: values.warehouse,
+                    containers: JSON.stringify(selected_containers)
+                },
+
+                freeze: true,
+
+                freeze_message: __(
+                    "Creating Arrival Stock Entry..."
+                ),
+
+                callback: function (r) {
+
+                    if (r.exc) {
+                        return;
+                    }
+
+                    if (!r.message) {
+                        return;
+                    }
+
+                    dialog.hide();
+
+                    frappe.show_alert({
+                        message: __(
+                            "Arrival Stock Entry {0} created successfully.",
+                            [r.message]
+                        ),
+                        indicator: "green"
+                    });
+
+                    frm.reload_doc();
+                }
+            });
+        }
+    });
+
+    dialog.fields_dict.container_list.$wrapper.html(`
+        <div style="
+            margin-top:15px;
+            max-height:400px;
+            overflow-y:auto;
+            border:1px solid #d1d8dd;
+            border-radius:4px;
+        ">
+            <table
+                class="table table-bordered"
+                style="
+                    width:100%;
+                    margin:0;
+                    border-collapse:collapse;
+                "
+            >
+                <thead>
+                    <tr>
+                        <th style="width:50px;text-align:center;">
+                            <input
+                                type="checkbox"
+                                class="select-all-arrival-containers"
+                            >
+                        </th>
+
+                        <th>
+                            ${__("Container No")}
+                        </th>
+
+                        <th>
+                            ${__("Container Type")}
+                        </th>
+
+                        <th>
+                            ${__("Seal No")}
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${rows_html}
+                </tbody>
+            </table>
+        </div>
+    `);
+
+    // Select / deselect all
+    dialog.$wrapper.on(
+        "change",
+        ".select-all-arrival-containers",
+        function () {
+
+            const checked = $(this).is(":checked");
+
+            dialog.$wrapper
+                .find(".arrival-container-checkbox")
+                .prop("checked", checked);
+        }
+    );
+
+    // Automatically update Select All checkbox
+    dialog.$wrapper.on(
+        "change",
+        ".arrival-container-checkbox",
+        function () {
+
+            const total = dialog.$wrapper
+                .find(".arrival-container-checkbox")
+                .length;
+
+            const selected = dialog.$wrapper
+                .find(".arrival-container-checkbox:checked")
+                .length;
+
+            dialog.$wrapper
+                .find(".select-all-arrival-containers")
+                .prop(
+                    "checked",
+                    total > 0 && total === selected
+                );
+        }
+    );
+
+    dialog.show();
+}
+
+function make_return_stock_entry(frm) {
+    if (frm.is_new()) {
+        frappe.msgprint(__("Please save the document first."));
+        return;
+    }
+
+    frappe.call({
+        method:
+            "liner.liner.doctype.import_export_order.import_export_order.get_delivered_containers_for_return",
+        args: {
+            import_export_order: frm.doc.name
+        },
+        freeze: true,
+        freeze_message: __("Checking delivered containers..."),
+        callback: function (r) {
+            if (r.exc) {
+                return;
+            }
+
+            const containers = r.message || [];
+
+            if (!containers.length) {
+                frappe.msgprint({
+                    title: __("No Containers"),
+                    message: __(
+                        "No delivered containers are available to return. " +
+                            "Please create a Delivery Order first."
+                    ),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            show_return_container_dialog_with_containers(frm, containers);
+        }
+    });
+}
+
+function show_return_container_dialog_with_containers(frm, containers) {
+    const rows_html = containers
+        .map((row, index) => {
+            return `
+            <tr>
+                <td style="width:50px;text-align:center;vertical-align:middle;">
+                    <input type="checkbox"
+                        class="return-container-checkbox"
+                        data-index="${index}">
+                </td>
+                <td style="vertical-align:middle;">
+                    <strong>${frappe.utils.escape_html(row.container_no || "")}</strong>
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.c_type || "")}
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.seal_no || "")}
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.source_warehouse || "")}
+                </td>
+            </tr>
+        `;
+        })
+        .join("");
+
+    const dialog = new frappe.ui.Dialog({
+        title: __("Return Container"),
+        size: "large",
+        fields: [
+            {
+                fieldname: "warehouse",
+                label: __("Warehouse"),
+                fieldtype: "Link",
+                options: "Warehouse",
+                reqd: 1,
+                get_query() {
+                    return {
+                        filters: {
+                            is_group: 0,
+                            company: frm.doc.company
+                        }
+                    };
+                }
+            },
+            {
+                fieldname: "container_list",
+                fieldtype: "HTML"
+            }
+        ],
+        primary_action_label: __("Create Stock Entry"),
+        primary_action: function (values) {
+            const selected_containers = [];
+
+            dialog.$wrapper
+                .find(".return-container-checkbox:checked")
+                .each(function () {
+                    const index = parseInt($(this).attr("data-index"), 10);
+                    const row = containers[index];
+                    if (!row) {
+                        return;
+                    }
+                    selected_containers.push({
+                        name: row.name,
+                        container_no: row.container_no,
+                        c_type: row.c_type,
+                        seal_no: row.seal_no
+                    });
+                });
+
+            if (!selected_containers.length) {
+                frappe.msgprint({
+                    title: __("No Container Selected"),
+                    message: __("Please select at least one container."),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            if (!values.warehouse) {
+                frappe.msgprint({
+                    title: __("Warehouse Required"),
+                    message: __("Please select a Warehouse."),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            frappe.call({
+                method:
+                    "liner.liner.doctype.import_export_order.import_export_order.create_return_stock_entries",
+                args: {
+                    import_export_order: frm.doc.name,
+                    warehouse: values.warehouse,
+                    containers: JSON.stringify(selected_containers)
+                },
+                freeze: true,
+                freeze_message: __("Creating Return Stock Entry..."),
+                callback: function (r) {
+                    if (r.exc || !r.message) {
+                        return;
+                    }
+
+                    dialog.hide();
+
+                    frappe.show_alert({
+                        message: __(
+                            "Return Stock Entry {0} created successfully.",
+                            [(r.message || []).join(", ")]
+                        ),
+                        indicator: "green"
+                    });
+
+                    frm.reload_doc();
+                }
+            });
+        }
+    });
+
+    dialog.fields_dict.container_list.$wrapper.html(`
+        <div style="
+            margin-top:15px;
+            max-height:400px;
+            overflow-y:auto;
+            border:1px solid #d1d8dd;
+            border-radius:4px;
+        ">
+            <table class="table table-bordered"
+                style="width:100%;margin:0;border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="width:50px;text-align:center;">
+                            <input type="checkbox" class="select-all-return-containers">
+                        </th>
+                        <th>${__("Container No")}</th>
+                        <th>${__("Container Type")}</th>
+                        <th>${__("Seal No")}</th>
+                        <th>${__("Delivery Warehouse")}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows_html}
+                </tbody>
+            </table>
+        </div>
+    `);
+
+    dialog.$wrapper.on(
+        "change",
+        ".select-all-return-containers",
+        function () {
+            const checked = $(this).is(":checked");
+            dialog.$wrapper
+                .find(".return-container-checkbox")
+                .prop("checked", checked);
+        }
+    );
+
+    dialog.$wrapper.on(
+        "change",
+        ".return-container-checkbox",
+        function () {
+            const total = dialog.$wrapper.find(
+                ".return-container-checkbox"
+            ).length;
+            const selected = dialog.$wrapper.find(
+                ".return-container-checkbox:checked"
+            ).length;
+
+            dialog.$wrapper
+                .find(".select-all-return-containers")
+                .prop("checked", total > 0 && total === selected);
+        }
+    );
+
+    dialog.show();
+}
+
+function make_export_stock_entry(frm) {
+    if (frm.is_new()) {
+        frappe.msgprint(__("Please save the document first."));
+        return;
+    }
+
+    frappe.call({
+        method:
+            "liner.liner.doctype.import_export_order.import_export_order.get_returned_containers_for_export",
+        args: {
+            import_export_order: frm.doc.name
+        },
+        freeze: true,
+        freeze_message: __("Checking returned containers..."),
+        callback: function (r) {
+            if (r.exc) {
+                return;
+            }
+
+            const containers = r.message || [];
+
+            if (!containers.length) {
+                frappe.msgprint({
+                    title: __("No Containers"),
+                    message: __(
+                        "No returned containers are available for export. " +
+                            "Please create a Return Container entry first."
+                    ),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            show_export_stock_entry_dialog(frm, containers);
+        }
+    });
+}
+
+function show_export_stock_entry_dialog(frm, containers) {
+    const rows_html = containers
+        .map((row, index) => {
+            return `
+            <tr>
+                <td style="width:50px;text-align:center;vertical-align:middle;">
+                    <input type="checkbox"
+                        class="export-container-checkbox"
+                        data-index="${index}">
+                </td>
+                <td style="vertical-align:middle;">
+                    <strong>${frappe.utils.escape_html(row.container_no || "")}</strong>
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.c_type || "")}
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.seal_no || "")}
+                </td>
+                <td style="vertical-align:middle;">
+                    ${frappe.utils.escape_html(row.source_warehouse || "")}
+                </td>
+            </tr>
+        `;
+        })
+        .join("");
+
+    const dialog = new frappe.ui.Dialog({
+        title: __("Container Export"),
+        size: "large",
+        fields: [
+            {
+                fieldname: "warehouse",
+                label: __("Source Warehouse"),
+                fieldtype: "Link",
+                options: "Warehouse",
+                reqd: 1,
+                get_query() {
+                    return {
+                        filters: {
+                            is_group: 0,
+                            company: frm.doc.company
+                        }
+                    };
+                }
+            },
+            {
+                fieldname: "container_list",
+                fieldtype: "HTML"
+            }
+        ],
+        primary_action_label: __("Create Stock Entry"),
+        primary_action: function (values) {
+            const selected_containers = [];
+
+            dialog.$wrapper
+                .find(".export-container-checkbox:checked")
+                .each(function () {
+                    const index = parseInt($(this).attr("data-index"), 10);
+                    const row = containers[index];
+                    if (!row) {
+                        return;
+                    }
+                    selected_containers.push({
+                        name: row.name,
+                        container_no: row.container_no,
+                        c_type: row.c_type,
+                        seal_no: row.seal_no,
+                        qty: row.qty,
+                        uom: row.uom
+                    });
+                });
+
+            if (!selected_containers.length) {
+                frappe.msgprint({
+                    title: __("No Container Selected"),
+                    message: __("Please select at least one container."),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            if (!values.warehouse) {
+                frappe.msgprint({
+                    title: __("Warehouse Required"),
+                    message: __("Please select a Source Warehouse."),
+                    indicator: "orange"
+                });
+                return;
+            }
+
+            frappe.call({
+                method:
+                    "liner.liner.doctype.import_export_order.import_export_order.create_export_stock_entries",
+                args: {
+                    import_export_order: frm.doc.name,
+                    warehouse: values.warehouse,
+                    containers: JSON.stringify(selected_containers)
+                },
+                freeze: true,
+                freeze_message: __("Creating Export Stock Entry..."),
+                callback: function (r) {
+                    if (r.exc || !r.message) {
+                        return;
+                    }
+
+                    dialog.hide();
+
+                    frappe.show_alert({
+                        message: __(
+                            "Export Stock Entry {0} created successfully.",
+                            [(r.message || []).join(", ")]
+                        ),
+                        indicator: "green"
+                    });
+
+                    frm.reload_doc();
+                }
+            });
+        }
+    });
+
+    dialog.fields_dict.container_list.$wrapper.html(`
+        <div style="
+            margin-top:15px;
+            max-height:400px;
+            overflow-y:auto;
+            border:1px solid #d1d8dd;
+            border-radius:4px;
+        ">
+            <table class="table table-bordered"
+                style="width:100%;margin:0;border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="width:50px;text-align:center;">
+                            <input type="checkbox" class="select-all-export-containers">
+                        </th>
+                        <th>${__("Container No")}</th>
+                        <th>${__("Container Type")}</th>
+                        <th>${__("Seal No")}</th>
+                        <th>${__("Current Warehouse")}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows_html}
+                </tbody>
+            </table>
+        </div>
+    `);
+
+    dialog.$wrapper.on(
+        "change",
+        ".select-all-export-containers",
+        function () {
+            const checked = $(this).is(":checked");
+            dialog.$wrapper
+                .find(".export-container-checkbox")
+                .prop("checked", checked);
+        }
+    );
+
+    dialog.$wrapper.on(
+        "change",
+        ".export-container-checkbox",
+        function () {
+            const total = dialog.$wrapper.find(
+                ".export-container-checkbox"
+            ).length;
+            const selected = dialog.$wrapper.find(
+                ".export-container-checkbox:checked"
+            ).length;
+
+            dialog.$wrapper
+                .find(".select-all-export-containers")
+                .prop("checked", total > 0 && total === selected);
+        }
+    );
+
+    dialog.show();
 }

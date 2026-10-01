@@ -1,0 +1,61 @@
+{
+ "app": "liner",
+ "creation": "2026-09-27 10:30:27.922051",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "ship",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Import-Export Order",
+   "link_to": "Import-Export Order",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Tariff Charges",
+   "link_to": "Tariff Charges",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Detention Slab",
+   "link_to": "Detention Slab",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Liner",
+   "link_to": "Liner",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-09-27 10:31:45.933175",
+ "modified_by": "Administrator",
+ "module": "Liner",
+ "name": "Liner",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Liner"
+}

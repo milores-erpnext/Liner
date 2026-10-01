@@ -13,6 +13,7 @@
   "main_job__vessel_details_section",
   "main_job__vessel_details",
   "vessel",
+  "vessel_code",
   "voyage_no",
   "port",
   "project",
@@ -40,6 +41,7 @@
   "column_break_xnea",
   "other_details",
   "status",
+  "do_no",
   "remarks",
   "do_block_reason",
   "notification_block_reason",
@@ -86,8 +88,8 @@
   "cargo_inspection",
   "miscellaneous",
   "freightcharges_tab",
-  "get_local_freight_charges",
   "contract_agreement",
+  "get_local_freight_charges",
   "section_break_ekda",
   "grand_total",
   "create_freight_charges",
@@ -146,9 +148,10 @@
    "label": "Main Job / Vessel Details"
   },
   {
+   "fetch_from": "vessel_code.name1",
    "fieldname": "vessel",
    "fieldtype": "Data",
-   "label": "Vessel"
+   "label": "Vessel Name"
   },
   {
    "fieldname": "voyage_no",
@@ -157,16 +160,17 @@
   },
   {
    "fieldname": "port",
-   "fieldtype": "Data",
-   "label": "Port"
+   "fieldtype": "Link",
+   "label": "Port",
+   "options": "Sea Ports"
   },
   {
    "depends_on": "eval:doc.company",
    "fieldname": "project",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Project",
-   "options": "Project",
-   "reqd": 1
+   "options": "Project"
   },
   {
    "fieldname": "column_break_bagl",
@@ -230,25 +234,29 @@
    "fieldname": "inco_term",
    "fieldtype": "Link",
    "label": "INCO Term",
-   "options": "Incoterm"
+   "options": "Incoterm",
+   "reqd": 1
   },
   {
    "fieldname": "freight_type",
    "fieldtype": "Select",
    "label": "Freight Type",
-   "options": "\nPrepaid\nCollect"
+   "options": "\nPrepaid\nCollect",
+   "reqd": 1
   },
   {
    "fieldname": "load_type",
    "fieldtype": "Select",
    "label": "Load Type",
-   "options": "\nFCL/FCL"
+   "options": "\nFCL/FCL\nFCL/LCL\nLCL/FCL\nLCL/LCL\nMTY/MTY",
+   "reqd": 1
   },
   {
    "fieldname": "move_type",
    "fieldtype": "Select",
    "label": "Move Type",
-   "options": "\nCY/CY"
+   "options": "\nCY/CY\nDOOR/PORT\nDOOR/DOOR\nPORT/DOOR\nMTCY/MTCY",
+   "reqd": 1
   },
   {
    "fieldname": "arrival_date",
@@ -259,7 +267,8 @@
    "fieldname": "cargo_type",
    "fieldtype": "Select",
    "label": "Cargo Type",
-   "options": "\nGeneral Cargo"
+   "options": "\nGeneral Cargo\nDangerous/Hazardous Cargo\nPerishable Cargo\nFrozen Cargo\nMilitary Cargo\nExhibitions\nPersonal Effects\nEmpty Container\nExport Storage Cargo\nOVER GAUGE CARGO (OOG)\nCABLE DRUMS\nPROJECT CARGO\nPharmaceuticals\nChemical Cargo",
+   "reqd": 1
   },
   {
    "fieldname": "imco_class",
@@ -697,13 +706,26 @@
    "link_filters": "[[\"Warehouse\",\"is_group\",\"=\",0]]",
    "options": "Warehouse",
    "reqd": 1
+  },
+  {
+   "fieldname": "vessel_code",
+   "fieldtype": "Link",
+   "label": "Vessel Code",
+   "options": "Vessel"
+  },
+  {
+   "fieldname": "do_no",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "DO No",
+   "options": "Container Delivery Order"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-26 15:47:38.878184",
+ "modified": "2026-09-30 15:01:46.132533",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Import-Export Order",

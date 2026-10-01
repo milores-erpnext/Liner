@@ -224,20 +224,57 @@ def import_xml_bulk(xml_text,order_type):
 	return {"created": created, "skipped": skipped, "errors": errors}
 
 
-def _extract_vessel_values(root):
-	"""Attributes on the root <Vessel> element — shared by every Booking."""
-	values = {}
-	root_field_map = {
-		"VesselName": "vessel",
-		"Voyage": "voyage_no",
-		"POLCode":"port"
-	}
-	for xml_attr, fieldname in root_field_map.items():
-		value = root.attrib.get(xml_attr)
-		if value:
-			values[fieldname] = value.strip()
-	return values
+# def _extract_vessel_values(root):
+# 	"""Attributes on the root <Vessel> element — shared by every Booking."""
+# 	values = {}
+# 	root_field_map = {
+# 		"VesselName": "vessel",
+# 		"Voyage": "voyage_no",
+# 		"Vesselcode":"vessel_code"
+# 	}
+# 	for xml_attr, fieldname in root_field_map.items():
+# 		value = root.attrib.get(xml_attr)
+# 		if value:
+# 			values[fieldname] = value.strip()
+# 	return values
 
+def _extract_vessel_values(root):
+	"""
+	Attributes on the root <Vessel> element.
+	Creates Vessel master automatically if it does not exist.
+	"""
+
+	values = {}
+
+	vessel_name = (root.attrib.get("VesselName") or "").strip()
+	vessel_code = (root.attrib.get("Vesselcode") or "").strip()
+	voyage_no = (root.attrib.get("Voyage") or "").strip()
+
+	# ---------------------------------------------------------
+	# Vessel Link
+	# ---------------------------------------------------------
+
+	if vessel_name or vessel_code:
+		vessel_link = get_or_create_vessel(
+			vessel_name=vessel_name,
+			vessel_code=vessel_code
+		)
+
+		if vessel_link:
+			values["vessel"] = vessel_link
+
+	# ---------------------------------------------------------
+	# Voyage
+	# ---------------------------------------------------------
+
+	if voyage_no:
+		values["voyage_no"] = voyage_no
+
+	# Keep vessel code separately if your field exists
+	if vessel_code:
+		values["vessel_code"] = vessel_code
+
+	return values
 
 def _extract_booking_values(values, booking):
 	"""Populate/return `values` with fields parsed from one <Booking> element."""
@@ -292,16 +329,50 @@ def _extract_booking_values(values, booking):
 
 		routing = bl.find("Routing")
 		if routing is not None:
+			# POLCode is inside <Routing>, not <Vessel>
+			# pol_code = (routing.attrib.get("POLCode") or "").strip()
+
+			# if pol_code:
+			# 	values["port"] = pol_code
+			pol_code = (routing.attrib.get("POLCode") or "").strip()
+
+			if pol_code:
+				port_link = get_or_create_sea_port(
+					port_code=pol_code
+				)
+
+				if port_link:
+					values["port"] = port_link
+				
 			hub_xml_map = {
 				"Place of Receipt": "PlaceofReceipt",
 				"Port of Loading": "PortOfLoading",
 				"Port of Discharge": "PortOfDischarge",
 				"Place of Delivery": "FinalPlaceOfDelivery",
 			}
+			# routing_rows = []
+			# for hub_label, xml_attr in hub_xml_map.items():
+			# 	hub_value = routing.attrib.get(xml_attr)
+			# 	routing_rows.append({"hub": hub_label, "hub_name": (hub_value or "").strip()})
+			# values["table_gfyk"] = routing_rows
 			routing_rows = []
+
 			for hub_label, xml_attr in hub_xml_map.items():
-				hub_value = routing.attrib.get(xml_attr)
-				routing_rows.append({"hub": hub_label, "hub_name": (hub_value or "").strip()})
+
+				hub_value = (routing.attrib.get(xml_attr) or "").strip()
+
+				if hub_value:
+					port_link = get_or_create_sea_port(
+						port_code=hub_value
+					)
+				else:
+					port_link = ""
+
+				routing_rows.append({
+					"hub": hub_label,
+					"hub_name": port_link
+				})
+
 			values["table_gfyk"] = routing_rows
 
 		cargo = bl.find("Cargo")
@@ -687,35 +758,112 @@ def make_payment_entry(source_name, target_doc=None):
 	return doc
 
 # @frappe.whitelist()
-# def print_delivery_order(doctype, docname, containers):
-
+# def print_delivery_order(doctype, docname, containers,doc):
 # 	if isinstance(containers, str):
 # 		containers = json.loads(containers)
+# 		doc = json.loads(doc)
 
 # 	if not containers:
 # 		frappe.throw("Please select at least one container.")
 
-# 	# Load original Import-Export Order
-# 	original_doc = frappe.get_doc(doctype, docname)
+# 	# ---------------------------------------------------------
+# 	# Create Container Delivery Order
+# 	# ---------------------------------------------------------
+# 	delivery_order = frappe.new_doc("Container Delivery Order")
+# 	company_name = (doc.get("company") or "").strip()
+# 	company_words = company_name.split()
 
-# 	# Create a copy of the document in memory
-# 	doc = frappe.copy_doc(original_doc)
+# 	# ---------------------------------------------------------
+# 	# Map Header Fields
+# 	# ---------------------------------------------------------
+# 	delivery_order.company = doc.get("company")
+# 	delivery_order.customer = doc.get("customer")
+# 	delivery_order.line = doc.get("line")
+# 	delivery_order.posting_date = frappe.utils.today()
+# 	delivery_order.location = doc.get("location")
 
-# 	doc.name = original_doc.name
-# 	doc.posting_date = original_doc.get("posting_date") 
-# 	# Selected container names
+# 	# ---------------------------------------------------------
+# 	# Map Selected Container Details
+# 	# ---------------------------------------------------------
 # 	selected_names = {
 # 		row.get("name")
 # 		for row in containers
 # 		if row.get("name")
 # 	}
 
+# 	for source_row in doc.get("table_tvep"):
+
+# 		if source_row.get("name") not in selected_names:
+# 			continue
+
+# 		target_row = delivery_order.append(
+# 			"container_details",
+# 			{}
+# 		)
+
+# 		# Equipment Table2 fields
+# 		target_row.container_no = source_row.get("container_no")
+# 		target_row.c_type = source_row.get("c_type")
+# 		target_row.seal_no = source_row.get("seal_no")
+# 		target_row.tare_wt = source_row.get("tare_wt")
+
+# 		# Optional fields, if required
+# 		# target_row.owner1 = source_row.owner1
+# 		# target_row.dt_charges = source_row.dt_charges
+# 		# target_row.dth = source_row.dth
+# 		# target_row.og = source_row.og
+# 		# target_row.dg = source_row.dg
+
+# 	# ---------------------------------------------------------
+# 	# Validate
+# 	# ---------------------------------------------------------
+# 	if not delivery_order.container_details:
+# 		frappe.throw("No valid containers were selected.")
+
+# 	# ---------------------------------------------------------
+# 	# Save
+# 	# ---------------------------------------------------------
+# 	delivery_order.insert()
+# 	frappe.db.set_value(doctype,docname,'do_no',delivery_order.name)
+
+# 	# ---------------------------------------------------------
+# 	# Load original Import-Export Order
+# 	# ---------------------------------------------------------
+
+# 	original_doc = frappe.get_doc(doctype, docname)
+
+# 	# ---------------------------------------------------------
+# 	# Get selected child row names
+# 	# ---------------------------------------------------------
+
+# 	selected_names = {
+# 		row.get("name")
+# 		for row in containers
+# 		if row.get("name")
+# 	}
+
+# 	if not selected_names:
+# 		frappe.throw("No valid containers were selected.")
+
+# 	# ---------------------------------------------------------
+# 	# Create an in-memory copy
+# 	# ---------------------------------------------------------
+
+# 	doc = frappe.copy_doc(original_doc)
+
+# 	doc.name = original_doc.name
+# 	doc.posting_date = original_doc.get("posting_date")
+
+# 	# ---------------------------------------------------------
 # 	# Keep only selected containers
+# 	# ---------------------------------------------------------
+
 # 	selected_table = []
 
 # 	for row in original_doc.table_tvep:
 
 # 		if row.name in selected_names:
+
 # 			selected_table.append({
 # 				"doctype": row.doctype,
 # 				"name": row.name,
@@ -727,134 +875,57 @@ def make_payment_entry(source_name, target_doc=None):
 # 				"dth": row.dth,
 # 				"og": row.og,
 # 				"dg": row.dg,
+# 				"delivery_order_printed": row.delivery_order_printed,
 # 			})
 
 # 	if not selected_table:
 # 		frappe.throw("No valid containers were selected.")
 
-# 	# Replace table only in memory.
-# 	# Original document is NOT modified/saved.
+# 	# ---------------------------------------------------------
+# 	# Replace child table only in memory
+# 	# Original document is NOT modified here
+# 	# ---------------------------------------------------------
+
 # 	doc.set("table_tvep", selected_table)
 
+# 	# ---------------------------------------------------------
 # 	# Generate print HTML
-# 	html = frappe.get_print(
-# 		doctype=doctype,
-# 		name=docname,
-# 		print_format="Delivery Order",
-# 		doc=doc,
-# 		letterhead="Company Letterhead - ICSS"
-# 	)
+# 	# ---------------------------------------------------------
 
-# 	return html
+# 	# html = frappe.get_print(
+# 	# 	doctype=doctype,
+# 	# 	name=docname,
+# 	# 	print_format="Delivery Order",
+# 	# 	doc=doc,
+# 	# 	letterhead="Company Letterhead - ICSS"
+# 	# )
 
-@frappe.whitelist()
-def print_delivery_order(doctype, docname, containers):
-	if isinstance(containers, str):
-		containers = json.loads(containers)
+# 	# ---------------------------------------------------------
+# 	# Mark selected containers as Delivery Order Printed
+# 	# Only execute after successful print HTML generation
+# 	# ---------------------------------------------------------
 
-	if not containers:
-		frappe.throw("Please select at least one container.")
+# 	for row_name in selected_names:
 
-	# ---------------------------------------------------------
-	# Load original Import-Export Order
-	# ---------------------------------------------------------
+# 		child_exists = frappe.db.exists(
+# 			"Equipment Table2",
+# 			row_name
+# 		)
 
-	original_doc = frappe.get_doc(doctype, docname)
-
-	# ---------------------------------------------------------
-	# Get selected child row names
-	# ---------------------------------------------------------
-
-	selected_names = {
-		row.get("name")
-		for row in containers
-		if row.get("name")
-	}
-
-	if not selected_names:
-		frappe.throw("No valid containers were selected.")
-
-	# ---------------------------------------------------------
-	# Create an in-memory copy
-	# ---------------------------------------------------------
-
-	doc = frappe.copy_doc(original_doc)
-
-	doc.name = original_doc.name
-	doc.posting_date = original_doc.get("posting_date")
-
-	# ---------------------------------------------------------
-	# Keep only selected containers
-	# ---------------------------------------------------------
-
-	selected_table = []
-
-	for row in original_doc.table_tvep:
-
-		if row.name in selected_names:
-
-			selected_table.append({
-				"doctype": row.doctype,
-				"name": row.name,
-				"container_no": row.container_no,
-				"c_type": row.c_type,
-				"seal_no": row.seal_no,
-				"tare_wt": row.tare_wt,
-				"owner1": row.owner1,
-				"dth": row.dth,
-				"og": row.og,
-				"dg": row.dg,
-				"delivery_order_printed": row.delivery_order_printed,
-			})
-
-	if not selected_table:
-		frappe.throw("No valid containers were selected.")
-
-	# ---------------------------------------------------------
-	# Replace child table only in memory
-	# Original document is NOT modified here
-	# ---------------------------------------------------------
-
-	doc.set("table_tvep", selected_table)
-
-	# ---------------------------------------------------------
-	# Generate print HTML
-	# ---------------------------------------------------------
-
-	html = frappe.get_print(
-		doctype=doctype,
-		name=docname,
-		print_format="Delivery Order",
-		doc=doc,
-		letterhead="Company Letterhead - ICSS"
-	)
-
-	# ---------------------------------------------------------
-	# Mark selected containers as Delivery Order Printed
-	# Only execute after successful print HTML generation
-	# ---------------------------------------------------------
-
-	for row_name in selected_names:
-
-		child_exists = frappe.db.exists(
-			"Equipment Table2",
-			row_name
-		)
-
-		if child_exists:
-			frappe.db.set_value(
-				"Equipment Table2",
-				row_name,
-				"delivery_order_printed",
-				1,
-				update_modified=False
-			)
+# 		if child_exists:
+# 			frappe.db.set_value(
+# 				"Equipment Table2",
+# 				row_name,
+# 				"delivery_order_printed",
+# 				1,
+# 				update_modified=False
+# 			)
 
 	# ---------------------------------------------------------
 	# Return print HTML
 	# ---------------------------------------------------------
 
-	return html
+	# return html
 
 @frappe.whitelist()
 def create_detention_sales_invoice(import_export_order, equipment_row_name):
@@ -1502,6 +1573,32 @@ def get_manifest_xml(import_export_order):
 	xml += "    </ManifestHeader>\n"
 
 	# =========================================================
+	# ETA / ETD FROM EXPECTED ROUTING
+	# =========================================================
+
+	eta_value = ""
+	etd_value = ""
+
+	if doc.expected_routing:
+		# Prefer the routing row matching the order vessel/voyage
+		tracking_row = None
+
+		for row in doc.expected_routing:
+			if (
+				row.vessel == doc.vessel
+				and row.voyage == doc.voyage_no
+			):
+				tracking_row = row
+				break
+
+		# Fallback to the last routing row
+		if not tracking_row:
+			tracking_row = doc.expected_routing[-1]
+
+		etd_value = format_tracking_datetime(tracking_row.etd)
+		eta_value = format_tracking_datetime(tracking_row.eta)
+
+	# =========================================================
 	# MEANS OF TRANSPORT
 	# =========================================================
 
@@ -1511,7 +1608,7 @@ def get_manifest_xml(import_export_order):
 	# Keep blank instead of incorrectly using voyage or booking number.
 	xml += add_element(
 		"MeansofTransportNumber",
-		"",
+		doc.vessel_code,
 		6
 	)
 
@@ -1542,13 +1639,13 @@ def get_manifest_xml(import_export_order):
 	# ETA / ETD are not available in Import-Export Order.
 	xml += add_element(
 		"ETA",
-		"",
+		eta_value,
 		6
 	)
 
 	xml += add_element(
 		"ETD",
-		"",
+		etd_value,
 		6
 	)
 
@@ -2131,7 +2228,7 @@ def get_local_freight_charges(import_export_order):
 
 	if not contract_name:
 		frappe.throw(
-			"Contract Agreement not found for selected Customer and Supplier, or it is not Active."
+			"Contract Agreement not found for selected Liner, or it is not Active."
 		)
 
 	contract = frappe.get_doc("Tariff Charges", contract_name)
@@ -2146,6 +2243,17 @@ def get_local_freight_charges(import_export_order):
 			{"type": row.eq_type,"parent":import_export_order},
 			"nos"
 		) or 0
+
+		equipment_row = frappe.db.get_value( "Equipment Table1", { "type": row.eq_type, "parent": import_export_order }, ["name", "nos"], as_dict=True ) 
+		
+		if not equipment_row: 
+			frappe.msgprint( 
+				f"Container Type '{row.eq_type}' from the Tariff Charges " 
+				f"does not match any Container Type in Import-Export Order '{import_export_order}'." 
+			)
+		
+		if row.rate_type == "LUM":
+			qty = 1
 		
 		io.append("contract_agreement", {
 			"item_code": row.item_code,
@@ -2172,118 +2280,1080 @@ def get_local_freight_charges(import_export_order):
 @frappe.whitelist()
 def print_gate_pass(docname):
 
-    doc = frappe.get_doc("Import-Export Order", docname)
+	doc = frappe.get_doc("Import-Export Order", docname)
 
-    html = frappe.get_print(
-        doctype="Import-Export Order",
-        name=doc.name,
-        print_format="Gate Pass"
-    )
+	html = frappe.get_print(
+		doctype="Import-Export Order",
+		name=doc.name,
+		print_format="Gate Pass"
+	)
 
-    return html
+	return html
 
 @frappe.whitelist()
-def send_arrival_notification(import_export_order, stock_entry):
+def send_arrival_notification(import_export_order):
+	order = frappe.get_doc("Import-Export Order", import_export_order)
+
+	# Consignee email (as in your original logic)
+	executive_email = frappe.db.get_value(
+		"Party Table",
+		{
+			"party": "Consignee",
+			"parent": import_export_order,
+			"parenttype": "Import-Export Order",
+		},
+		"email",
+	)
+
+	if not executive_email:
+		frappe.throw("No email address found for Consignee.")
+
+	# Team emails: plain list of strings, no blanks, no duplicates
+	team_emails = frappe.get_all(
+		"Employee",
+		filters={"company": order.company, "status": "Active"},
+		pluck="company_email",
+	)
+	team_emails = list({e for e in team_emails})
+
+	attachments = [
+		frappe.attach_print(
+			doctype="Import-Export Order",
+			name=order.name,
+			print_format="Cargo Arrival Notice",
+			file_name=f"Arrival Notice - {order.name}",
+			print_letterhead=True,
+		)
+	]
+
+	frappe.sendmail(
+		recipients=[executive_email],
+		cc=team_emails,
+		subject=f"Arrival Notice - {order.name}",
+		message=f"""
+			<p>Dear Sir/Madam,</p>
+
+			<p>
+				Please find attached the Cargo Arrival Notice for
+				Vessel <b>{order.vessel or ""}</b>,
+				Voyage <b>{order.voyage_no or ""}</b>,
+				B/L No. <b>{order.bl_no or ""}</b>.
+			</p>
+
+			<p>
+				Regards,<br>
+				{frappe.db.get_value("Company", order.company, "company_name") or order.company}
+			</p>
+		""",
+		attachments=attachments,
+		reference_doctype="Import-Export Order",
+		reference_name=order.name,
+	)
+
+	return True
+
+def format_tracking_datetime(value):
+	"""
+	Convert tracking date text such as:
+		Sailed On 20-09-2021
+		Arrived On Sep 21 2021
+
+	into:
+		2021-09-20T12:00:00Z
+		2021-09-21T12:00:00Z
+	"""
+
+	if value is None:
+		return ""
+
+	value = str(value).strip()
+
+	if not value:
+		return ""
+
+	# Remove tracking prefixes
+	value = re.sub(
+		r"^(Sailed On|Arrived On)\s*",
+		"",
+		value,
+		flags=re.IGNORECASE
+	).strip()
+
+	formats = (
+		"%d-%m-%Y",
+		"%d/%m/%Y",
+		"%d-%b-%Y",
+		"%b %d %Y",
+		"%B %d %Y",
+	)
+
+	for fmt in formats:
+		try:
+			dt = datetime.strptime(value, fmt)
+
+			# XML requires time, but tracking data has date only.
+			# Use 12:00:00 as the default time.
+			dt = dt.replace(
+				hour=12,
+				minute=0,
+				second=0
+			)
+
+			return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+		except ValueError:
+			continue
+
+	return ""
+
+def get_or_create_vessel(vessel_name, vessel_code=None):
+	"""
+	Find Vessel by code/name1 and create it if it does not exist.
+
+	Returns the Vessel document name for Link field usage.
+	"""
+
+	vessel_name = (vessel_name or "").strip()
+	vessel_code = (vessel_code or "").strip()
+
+	if not vessel_name and not vessel_code:
+		return None
+
+	# ---------------------------------------------------------
+	# 1. Check by code
+	# ---------------------------------------------------------
+
+	if vessel_code:
+		existing = frappe.db.get_value(
+			"Vessel",
+			{"code": vessel_code},
+			"name"
+		)
+
+		if existing:
+			return existing
+
+	# ---------------------------------------------------------
+	# 2. Check by vessel name
+	# ---------------------------------------------------------
+
+	if vessel_name:
+		existing = frappe.db.get_value(
+			"Vessel",
+			{"name1": vessel_name},
+			"name"
+		)
+
+		if existing:
+			return existing
+
+	# ---------------------------------------------------------
+	# 3. Create Vessel
+	# ---------------------------------------------------------
+
+	if not vessel_code:
+		# Use vessel name as code if XML does not provide one
+		vessel_code = re.sub(
+			r"[^A-Za-z0-9]+",
+			"",
+			vessel_name
+		).lower()
+
+		if not vessel_code:
+			frappe.throw(
+				f"Unable to generate Vessel code for '{vessel_name}'."
+			)
+
+	# Make sure generated code is unique
+	base_code = vessel_code
+	counter = 1
+
+	while frappe.db.exists("Vessel", vessel_code):
+		vessel_code = f"{base_code}{counter}"
+		counter += 1
+
+	vessel = frappe.get_doc({
+		"doctype": "Vessel",
+		"name1": vessel_name,
+		"code": vessel_code,
+		"is_active": 1
+	})
+
+	vessel.insert(ignore_permissions=True)
+
+	return vessel.name
+
+
+def get_or_create_sea_port(port_code, port_name=None):
+	"""
+	Find Sea Ports by code/name and create it if required.
+
+	Returns the Sea Ports document name for Link field usage.
+	"""
+
+	port_code = (port_code or "").strip()
+	port_name = (port_name or "").strip()
+
+	if not port_code and not port_name:
+		return None
+
+	# ---------------------------------------------------------
+	# 1. Check by document name / code
+	# ---------------------------------------------------------
+
+	if port_code and frappe.db.exists("Sea Ports", port_code):
+		return port_code
+
+	# ---------------------------------------------------------
+	# 2. Check by code field
+	# ---------------------------------------------------------
+
+	if port_code:
+		existing = frappe.db.get_value(
+			"Sea Ports",
+			{"code": port_code},
+			"name"
+		)
+
+		if existing:
+			return existing
+
+	# ---------------------------------------------------------
+	# 3. Check by name1
+	# ---------------------------------------------------------
+
+	if port_name:
+		existing = frappe.db.get_value(
+			"Sea Ports",
+			{"name1": port_name},
+			"name"
+		)
+
+		if existing:
+			return existing
+
+	# ---------------------------------------------------------
+	# 4. Create Sea Port
+	# ---------------------------------------------------------
+
+	if not port_code:
+		port_code = re.sub(
+			r"[^A-Za-z0-9]+",
+			"",
+			port_name
+		).upper()
+
+		if not port_code:
+			frappe.throw(
+				f"Unable to generate Port code for '{port_name}'."
+			)
+
+		base_code = port_code
+		counter = 1
+
+		while frappe.db.exists("Sea Ports", port_code):
+			port_code = f"{base_code}{counter}"
+			counter += 1
+
+	port = frappe.get_doc({
+		"doctype": "Sea Ports",
+		"code": port_code,
+		"name1": port_name,
+		"is_active": 1
+	})
+
+	port.insert(ignore_permissions=True)
+
+	return port.name
+
+@frappe.whitelist()
+def get_arrival_notice_print_formats():
+	"""
+	Return enabled Print Formats available for Import-Export Order.
+	"""
+
+	return frappe.get_all(
+		"Print Format",
+		filters={
+			"doc_type": "Import-Export Order",
+			"disabled": 0
+		},
+		fields=["name"],
+		order_by="name asc"
+	)
+
+@frappe.whitelist()
+def create_arrival_notice_attachment(import_export_order, print_format):
+	"""
+	Generate the selected Arrival Notice print format as PDF
+	and attach it to the Import-Export Order.
+	"""
+
+	if not import_export_order:
+		frappe.throw(_("Import-Export Order is required."))
+
+	if not print_format:
+		frappe.throw(_("Please select a Print Format."))
+
+	# ---------------------------------------------------------
+	# Validate document
+	# ---------------------------------------------------------
+
+	doc = frappe.get_doc(
+		"Import-Export Order",
+		import_export_order
+	)
+
+	# ---------------------------------------------------------
+	# Validate Print Format
+	# ---------------------------------------------------------
+
+	print_format_exists = frappe.db.exists(
+		"Print Format",
+		{
+			"name": print_format,
+			"doc_type": "Import-Export Order",
+			"disabled": 0
+		}
+	)
+
+	if not print_format_exists:
+		frappe.throw(
+			_("Invalid Print Format: {0}").format(print_format)
+		)
+
+	# ---------------------------------------------------------
+	# Generate Print HTML
+	# ---------------------------------------------------------
+
+	html = frappe.get_print(
+		doctype="Import-Export Order",
+		name=doc.name,
+		print_format=print_format,
+		letterhead=None
+	)
+
+	# ---------------------------------------------------------
+	# Convert HTML to PDF
+	# ---------------------------------------------------------
+
+	from frappe.utils.pdf import get_pdf
+
+	pdf_data = get_pdf(html)
+
+	# ---------------------------------------------------------
+	# File name
+	# ---------------------------------------------------------
+
+	file_name = f"Arrival Notice - {doc.name}.pdf"
+
+	# ---------------------------------------------------------
+	# Check existing attachment
+	# ---------------------------------------------------------
+
+	existing_file = frappe.db.get_value(
+		"File",
+		{
+			"attached_to_doctype": "Import-Export Order",
+			"attached_to_name": doc.name,
+			"file_name": file_name
+		},
+		"name"
+	)
+
+	if existing_file:
+		frappe.delete_doc(
+			"File",
+			existing_file,
+			ignore_permissions=True
+		)
+
+	# ---------------------------------------------------------
+	# Create File attachment
+	# ---------------------------------------------------------
+
+	file_doc = frappe.get_doc({
+		"doctype": "File",
+		"file_name": file_name,
+		"is_private": 1,
+		"content": pdf_data,
+		"attached_to_doctype": "Import-Export Order",
+		"attached_to_name": doc.name,
+	})
+
+	file_doc.insert(ignore_permissions=True)
+
+	return {
+		"file_name": file_name,
+		"file_url": file_doc.file_url,
+		"file_name": file_doc.name,
+		"print_format": print_format
+	}
+
+@frappe.whitelist()
+def create_arrival_stock_entries(
+	import_export_order,
+	warehouse,
+	containers
+):
+	import json
+
+	if not warehouse:
+		frappe.throw(_("Warehouse is required."))
+
+	if not containers:
+		frappe.throw(_("Please select at least one container."))
+
+	containers = json.loads(containers)
+
+	order = frappe.get_doc(
+		"Import-Export Order",
+		import_export_order
+	)
+
+	created_entries = []
+
+	for container in containers:
+
+		container_no = container.get("container_no")
+
+		if not container_no:
+			continue
+
+		# Container number must exist as an Item
+		if not frappe.db.exists("Item", container_no):
+			frappe.throw(
+				_("Item {0} does not exist.").format(
+					frappe.bold(container_no)
+				)
+			)
+
+		stock_uom = frappe.db.get_value(
+			"Item",
+			container_no,
+			"stock_uom"
+		)
+
+		stock_entry = frappe.new_doc("Stock Entry")
+
+		stock_entry.stock_entry_type = "Material Receipt"
+
+		stock_entry.company = order.company
+		stock_entry.custom_importexport_order = order.name
+
+		stock_entry.append("items", {
+			"item_code": container_no,
+			"qty": 1,
+			"uom": stock_uom,
+			"stock_uom": stock_uom,
+			"rate": 0,
+			"basic_rate": 0,
+			"t_warehouse": warehouse,
+			"allow_zero_valuation_rate": 1,
+			"importexport_order": order.name
+		})
+
+		stock_entry.insert(
+			ignore_permissions=True
+		)
+
+		stock_entry.submit()
+
+		created_entries.append(
+			stock_entry.name
+		)
+
+	frappe.db.commit()
+
+	return created_entries
+
+@frappe.whitelist()
+def get_pending_arrival_containers(import_export_order):
+
+	order = frappe.get_doc(
+		"Import-Export Order",
+		import_export_order
+	)
+
+	pending_containers = []
+
+	for row in order.table_tvep:
+
+		if not row.container_no:
+			continue
+
+		# Check whether an Arrival Stock Entry
+		# already exists for this container
+		existing = frappe.db.sql("""
+			SELECT DISTINCT
+				se.name
+			FROM `tabStock Entry` se
+			INNER JOIN `tabStock Entry Detail` sed
+				ON sed.parent = se.name
+			WHERE se.docstatus = 1
+			  AND se.stock_entry_type = 'Material Receipt'
+			  AND sed.item_code = %s
+			LIMIT 1
+		""", row.container_no, as_dict=True)
+
+		if existing:
+			continue
+
+		pending_containers.append({
+			"name": row.name,
+			"container_no": row.container_no,
+			"c_type": row.c_type,
+			"seal_no": row.seal_no
+		})
+
+	return pending_containers
+
+@frappe.whitelist()
+def get_arrived_containers_for_delivery(import_export_order):
+    """
+    Return containers from table_tvep that:
+      - have a submitted Material Receipt Stock Entry linked to this Import-Export Order
+      - have NOT yet been delivered (delivery_order_printed != 1)
+
+    Also include the source warehouse (t_warehouse of the receipt)
+    so the Delivery Order Material Issue can pull from it.
+    """
     order = frappe.get_doc("Import-Export Order", import_export_order)
-
-    if not order.executive:
-        return
-
-    # Get Executive email from User
-    executive_email = frappe.db.get_value(
-        "Party Table",
-        {"party": "Consignee","parent":import_export_order},
-        "email"
-    )
-
-    if not executive_email:
-        frappe.throw(
-            f"No email address found for Executive: {order.executive}"
-        )
-
-    container_rows = ""
+    result = []
 
     for row in order.table_tvep:
-        if row.container_no:
-            container_rows += f"""
-                <tr>
-                    <td>{row.container_no}</td>
-                    <td>{row.c_type or ""}</td>
-                </tr>
+        if not row.container_no:
+            continue
+
+        # Skip already delivered
+        # if cint(row.delivery_order_printed) == 1:
+        #     continue
+
+        # Find the submitted Material Receipt linked to this order
+        receipt = frappe.db.sql(
             """
+            SELECT
+                se.name AS stock_entry,
+                sed.t_warehouse AS warehouse,
+                sed.qty AS qty,
+                sed.uom AS uom
+            FROM `tabStock Entry` se
+            INNER JOIN `tabStock Entry Detail` sed
+                ON sed.parent = se.name
+            WHERE se.docstatus = 1
+              AND se.stock_entry_type = 'Material Receipt'
+              AND se.custom_importexport_order = %(order)s
+              AND sed.importexport_order = %(order)s
+              AND sed.item_code = %(item)s
+            ORDER BY se.creation DESC
+            LIMIT 1
+            """,
+            {
+                "order": import_export_order,
+                "item": row.container_no,
+            },
+            as_dict=True,
+        )
 
-    frappe.sendmail(
-        recipients=[executive_email],
-        subject=f"Arrival Notice - {order.name}",
-        message=f"""
-            <p>Dear {order.executive},</p>
+        if not receipt:
+            # No arrival yet — skip
+            continue
 
-            <p>
-                Arrival Notice has been created for the following
-                Import-Export Order.
-            </p>
+        result.append(
+            {
+                "name": row.name,
+                "container_no": row.container_no,
+                "c_type": row.c_type,
+                "seal_no": row.seal_no,
+                "source_warehouse": receipt[0].warehouse or "",
+                "source_stock_entry": receipt[0].stock_entry,
+                "qty": receipt[0].qty or 1,
+                "uom": receipt[0].uom or "Nos",
+            }
+        )
 
-            <table border="1"
-                   cellpadding="6"
-                   cellspacing="0"
-                   style="border-collapse: collapse;">
+    return result
 
-                <tr>
-                    <td><b>Import-Export Order</b></td>
-                    <td>{order.name}</td>
-                </tr>
 
-                <tr>
-                    <td><b>Vessel</b></td>
-                    <td>{order.vessel or ""}</td>
-                </tr>
+@frappe.whitelist()
+def create_delivery_order_with_stock_entry(doctype, docname, containers):
+    """
+    Create:
+      1. One Container Delivery Order with the selected containers.
+      2. One combined Material Issue Stock Entry for all selected containers,
+         sourced from each container's arrival warehouse.
+    Marks delivery_order_printed = 1 on each selected child row.
+    """
+    if isinstance(containers, str):
+        containers = json.loads(containers)
 
-                <tr>
-                    <td><b>Voyage No.</b></td>
-                    <td>{order.voyage_no or ""}</td>
-                </tr>
+    if not containers:
+        frappe.throw(_("Please select at least one container."))
 
-                <tr>
-                    <td><b>Customer</b></td>
-                    <td>{order.customer or ""}</td>
-                </tr>
+    order = frappe.get_doc(doctype, docname)
 
-                <tr>
-                    <td><b>Stock Entry</b></td>
-                    <td>{stock_entry}</td>
-                </tr>
+    # ---------------------------------------------------------
+    # Validate required header fields for Delivery Order
+    # ---------------------------------------------------------
+    if not order.company:
+        frappe.throw(_("Company is missing in Import-Export Order."))
+    if not order.customer:
+        frappe.throw(_("Customer is missing in Import-Export Order."))
 
-            </table>
+    # ---------------------------------------------------------
+    # Build set of selected child row names
+    # ---------------------------------------------------------
+    selected_names = {c.get("name") for c in containers if c.get("name")}
+    if not selected_names:
+        frappe.throw(_("No valid containers were selected."))
 
-            <br>
+    # ---------------------------------------------------------
+    # Validate each selected container has a source warehouse
+    # ---------------------------------------------------------
+    for c in containers:
+        if not c.get("source_warehouse"):
+            frappe.throw(
+                _(
+                    "Source warehouse is missing for container {0}. "
+                    "Please check the Arrival Stock Entry."
+                ).format(c.get("container_no") or c.get("name"))
+            )
 
-            <p><b>Containers</b></p>
+    # ---------------------------------------------------------
+    # 1. Create Container Delivery Order
+    # ---------------------------------------------------------
+    delivery_order = frappe.new_doc("Container Delivery Order")
+    delivery_order.company = order.company
+    delivery_order.customer = order.customer
+    delivery_order.line = order.line
+    delivery_order.posting_date = frappe.utils.today()
+    delivery_order.location = order.location
 
-            <table border="1"
-                   cellpadding="6"
-                   cellspacing="0"
-                   style="border-collapse: collapse;">
+    for src in order.table_tvep:
+        if src.name not in selected_names:
+            continue
 
-                <tr>
-                    <th>Container No</th>
-                    <th>Container Type</th>
-                </tr>
+        target_row = delivery_order.append("container_details", {})
+        target_row.container_no = src.container_no
+        target_row.c_type = src.c_type
+        target_row.seal_no = src.seal_no
+        target_row.tare_wt = src.tare_wt
 
-                {container_rows}
+    if not delivery_order.container_details:
+        frappe.throw(_("No valid containers were selected."))
 
-            </table>
+    delivery_order.insert(ignore_permissions=True)
 
-            <br>
+    # Link DO back on Import-Export Order
+    frappe.db.set_value(doctype, docname, "do_no", delivery_order.name)
 
-            <p>
-                Please check the Import-Export Order for further details.
-            </p>
+    # ---------------------------------------------------------
+    # 2. Create ONE combined Material Issue Stock Entry
+    # ---------------------------------------------------------
+    stock_entry = frappe.new_doc("Stock Entry")
+    stock_entry.stock_entry_type = "Material Issue"
+    stock_entry.purpose = "Material Issue"
+    stock_entry.company = order.company
+    stock_entry.custom_importexport_order = order.name
 
-            <p>
-                Regards,<br>
-                ERP System
-            </p>
-        """
-    )
+    for c in containers:
+        container_no = c.get("container_no")
+        source_warehouse = c.get("source_warehouse")
 
-    return True
+        if not container_no or not source_warehouse:
+            continue
+
+        if not frappe.db.exists("Item", container_no):
+            frappe.throw(
+                _("Item {0} does not exist.").format(container_no)
+            )
+
+        stock_uom = frappe.db.get_value(
+            "Item", container_no, "stock_uom"
+        ) or "Nos"
+
+        stock_entry.append(
+            "items",
+            {
+                "item_code": container_no,
+                "qty": c.get("qty") or 1,
+                "uom": c.get("uom") or stock_uom,
+                "stock_uom": stock_uom,
+                "s_warehouse": source_warehouse,
+                "allow_zero_valuation_rate": 1,
+                "importexport_order": order.name,
+            },
+        )
+
+    if not stock_entry.items:
+        frappe.throw(
+            _("No valid containers were selected for Stock Entry.")
+        )
+
+    stock_entry.insert(ignore_permissions=True)
+    stock_entry.submit()
+
+    # ---------------------------------------------------------
+    # 3. Mark selected containers as delivered
+    # ---------------------------------------------------------
+    for row_name in selected_names:
+        if frappe.db.exists("Equipment Table2", row_name):
+            frappe.db.set_value(
+                "Equipment Table2",
+                row_name,
+                "delivery_order_printed",
+                1,
+                update_modified=False,
+            )
+
+    frappe.db.commit()
+
+    return {
+        "delivery_order": delivery_order.name,
+        "stock_entries": [stock_entry.name],
+    }
+
+@frappe.whitelist()
+def get_delivered_containers_for_return(import_export_order):
+    """
+    Return containers from table_tvep that:
+      - have been delivered (delivery_order_printed = 1)
+      - have NOT yet been returned (no submitted Material Receipt
+        linked to this order AFTER the delivery)
+
+    Also include the warehouse used in the delivery Material Issue
+    so the dialog can show where the container came from.
+    """
+    order = frappe.get_doc("Import-Export Order", import_export_order)
+    result = []
+
+    for row in order.table_tvep:
+        if not row.container_no:
+            continue
+
+        # Must have been delivered first
+        if cint(row.delivery_order_printed) != 1:
+            continue
+
+        # Get the Delivery (Material Issue) Stock Entry for this container
+        delivery = frappe.db.sql(
+            """
+            SELECT
+                se.name AS stock_entry,
+                sed.s_warehouse AS warehouse,
+                sed.qty AS qty,
+                sed.uom AS uom
+            FROM `tabStock Entry` se
+            INNER JOIN `tabStock Entry Detail` sed
+                ON sed.parent = se.name
+            WHERE se.docstatus = 1
+              AND se.stock_entry_type = 'Material Issue'
+              AND se.custom_importexport_order = %(order)s
+              AND sed.importexport_order = %(order)s
+              AND sed.item_code = %(item)s
+            ORDER BY se.creation DESC
+            LIMIT 1
+            """,
+            {
+                "order": import_export_order,
+                "item": row.container_no,
+            },
+            as_dict=True,
+        )
+
+        if not delivery:
+            # delivered flag is on, but no Material Issue found — skip
+            continue
+
+        # Skip if already returned (a Material Receipt exists AFTER the issue)
+        returned = frappe.db.sql(
+            """
+            SELECT se.name
+            FROM `tabStock Entry` se
+            INNER JOIN `tabStock Entry Detail` sed
+                ON sed.parent = se.name
+            WHERE se.docstatus = 1
+              AND se.stock_entry_type = 'Material Receipt'
+              AND se.custom_importexport_order = %(order)s
+              AND sed.importexport_order = %(order)s
+              AND sed.item_code = %(item)s
+              AND se.creation > (
+                  SELECT creation FROM `tabStock Entry` WHERE name = %(issue)s
+              )
+            LIMIT 1
+            """,
+            {
+                "order": import_export_order,
+                "item": row.container_no,
+                "issue": delivery[0].stock_entry,
+            },
+            as_dict=True,
+        )
+
+        if returned:
+            continue
+
+        result.append(
+            {
+                "name": row.name,
+                "container_no": row.container_no,
+                "c_type": row.c_type,
+                "seal_no": row.seal_no,
+                "source_warehouse": delivery[0].warehouse or "",
+                "source_stock_entry": delivery[0].stock_entry,
+                "qty": delivery[0].qty or 1,
+                "uom": delivery[0].uom or "Nos",
+            }
+        )
+
+    return result
+
+@frappe.whitelist()
+def create_return_stock_entries(import_export_order, warehouse, containers):
+    """
+    Create one Material Receipt Stock Entry per returned container,
+    pulling them back into the chosen warehouse.
+    """
+    if not warehouse:
+        frappe.throw(_("Warehouse is required."))
+
+    if not containers:
+        frappe.throw(_("Please select at least one container."))
+
+    if isinstance(containers, str):
+        containers = json.loads(containers)
+
+    order = frappe.get_doc("Import-Export Order", import_export_order)
+
+    created_entries = []
+
+    for container in containers:
+        container_no = container.get("container_no")
+
+        if not container_no:
+            continue
+
+        if not frappe.db.exists("Item", container_no):
+            frappe.throw(
+                _("Item {0} does not exist.").format(
+                    frappe.bold(container_no)
+                )
+            )
+
+        stock_uom = frappe.db.get_value(
+            "Item", container_no, "stock_uom"
+        ) or "Nos"
+
+        stock_entry = frappe.new_doc("Stock Entry")
+        stock_entry.stock_entry_type = "Material Receipt"
+        stock_entry.company = order.company
+        stock_entry.custom_importexport_order = order.name
+
+        stock_entry.append(
+            "items",
+            {
+                "item_code": container_no,
+                "qty": container.get("qty") or 1,
+                "uom": container.get("uom") or stock_uom,
+                "stock_uom": stock_uom,
+                "rate": 0,
+                "basic_rate": 0,
+                "t_warehouse": warehouse,
+                "allow_zero_valuation_rate": 1,
+                "importexport_order": order.name,
+            },
+        )
+
+        stock_entry.insert(ignore_permissions=True)
+        stock_entry.submit()
+
+        created_entries.append(stock_entry.name)
+
+    frappe.db.commit()
+
+    return created_entries
+
+@frappe.whitelist()
+def get_returned_containers_for_export(import_export_order):
+    """
+    Return containers from table_tvep that:
+      - have been delivered (delivery_order_printed = 1)
+      - have been returned (a Material Receipt exists AFTER the delivery)
+      - have NOT yet been exported (no Material Issue after the return)
+
+    Also include the warehouse from the Return Material Receipt
+    so the Export Material Issue can pull from it.
+    """
+    order = frappe.get_doc("Import-Export Order", import_export_order)
+    result = []
+
+    for row in order.table_tvep:
+        if not row.container_no:
+            continue
+
+        # Must have been delivered
+        if cint(row.delivery_order_printed) != 1:
+            continue
+
+        # Find the latest delivery (Material Issue)
+        delivery = frappe.db.sql(
+            """
+            SELECT se.name AS stock_entry, se.creation AS creation
+            FROM `tabStock Entry` se
+            INNER JOIN `tabStock Entry Detail` sed
+                ON sed.parent = se.name
+            WHERE se.docstatus = 1
+              AND se.stock_entry_type = 'Material Issue'
+              AND se.custom_importexport_order = %(order)s
+              AND sed.importexport_order = %(order)s
+              AND sed.item_code = %(item)s
+            ORDER BY se.creation DESC
+            LIMIT 1
+            """,
+            {
+                "order": import_export_order,
+                "item": row.container_no,
+            },
+            as_dict=True,
+        )
+
+        if not delivery:
+            continue
+
+        # Find the return (Material Receipt AFTER the delivery)
+        returned = frappe.db.sql(
+            """
+            SELECT
+                se.name AS stock_entry,
+                se.creation AS creation,
+                sed.t_warehouse AS warehouse,
+                sed.qty AS qty,
+                sed.uom AS uom
+            FROM `tabStock Entry` se
+            INNER JOIN `tabStock Entry Detail` sed
+                ON sed.parent = se.name
+            WHERE se.docstatus = 1
+              AND se.stock_entry_type = 'Material Receipt'
+              AND se.custom_importexport_order = %(order)s
+              AND sed.importexport_order = %(order)s
+              AND sed.item_code = %(item)s
+              AND se.creation > %(delivery_creation)s
+            ORDER BY se.creation DESC
+            LIMIT 1
+            """,
+            {
+                "order": import_export_order,
+                "item": row.container_no,
+                "delivery_creation": delivery[0].creation,
+            },
+            as_dict=True,
+        )
+
+        if not returned:
+            # Not yet returned — skip
+            continue
+
+        # Skip if already exported (Material Issue AFTER the return)
+        exported = frappe.db.sql(
+            """
+            SELECT se.name
+            FROM `tabStock Entry` se
+            INNER JOIN `tabStock Entry Detail` sed
+                ON sed.parent = se.name
+            WHERE se.docstatus = 1
+              AND se.stock_entry_type = 'Material Issue'
+              AND se.custom_importexport_order = %(order)s
+              AND sed.importexport_order = %(order)s
+              AND sed.item_code = %(item)s
+              AND se.creation > %(return_creation)s
+            LIMIT 1
+            """,
+            {
+                "order": import_export_order,
+                "item": row.container_no,
+                "return_creation": returned[0].creation,
+            },
+            as_dict=True,
+        )
+
+        if exported:
+            continue
+
+        result.append(
+            {
+                "name": row.name,
+                "container_no": row.container_no,
+                "c_type": row.c_type,
+                "seal_no": row.seal_no,
+                "source_warehouse": returned[0].warehouse or "",
+                "source_stock_entry": returned[0].stock_entry,
+                "qty": returned[0].qty or 1,
+                "uom": returned[0].uom or "Nos",
+            }
+        )
+
+    return result
+
+@frappe.whitelist()
+def create_export_stock_entries(import_export_order, warehouse, containers):
+    """
+    Create one Material Issue Stock Entry per exported container,
+    pulling them out of the selected source warehouse.
+    """
+    if not warehouse:
+        frappe.throw(_("Source Warehouse is required."))
+
+    if not containers:
+        frappe.throw(_("Please select at least one container."))
+
+    if isinstance(containers, str):
+        containers = json.loads(containers)
+
+    order = frappe.get_doc("Import-Export Order", import_export_order)
+
+    created_entries = []
+
+    for container in containers:
+        container_no = container.get("container_no")
+
+        if not container_no:
+            continue
+
+        if not frappe.db.exists("Item", container_no):
+            frappe.throw(
+                _("Item {0} does not exist.").format(
+                    frappe.bold(container_no)
+                )
+            )
+
+        stock_uom = frappe.db.get_value(
+            "Item", container_no, "stock_uom"
+        ) or "Nos"
+
+        stock_entry = frappe.new_doc("Stock Entry")
+        stock_entry.stock_entry_type = "Material Issue"
+        stock_entry.company = order.company
+        stock_entry.custom_importexport_order = order.name
+
+        stock_entry.append(
+            "items",
+            {
+                "item_code": container_no,
+                "qty": container.get("qty") or 1,
+                "uom": container.get("uom") or stock_uom,
+                "stock_uom": stock_uom,
+                "s_warehouse": warehouse,
+                "allow_zero_valuation_rate": 1,
+                "importexport_order": order.name,
+            },
+        )
+
+        stock_entry.insert(ignore_permissions=True)
+        stock_entry.submit()
+
+        created_entries.append(stock_entry.name)
+
+    frappe.db.commit()
+
+    return created_entries
+	

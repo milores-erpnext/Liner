@@ -1,0 +1,155 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:code",
+ "creation": "2026-08-01 13:56:07.086069",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "details_section",
+  "name1",
+  "code",
+  "column_break_fdnz",
+  "is_active",
+  "additional_info_section",
+  "vessel_flag_nationality",
+  "imo_no",
+  "master",
+  "mother_or_feeder",
+  "transport_number",
+  "operator",
+  "column_break_gwuq",
+  "call_sign",
+  "doha_port_vessel_code",
+  "commissioned_on",
+  "gross_tonnage",
+  "net_tonnage"
+ ],
+ "fields": [
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "additional_info_section",
+   "fieldtype": "Section Break",
+   "label": "Additional Info"
+  },
+  {
+   "fieldname": "vessel_flag_nationality",
+   "fieldtype": "Data",
+   "label": "Vessel Flag -Nationality"
+  },
+  {
+   "fieldname": "call_sign",
+   "fieldtype": "Data",
+   "label": "Call Sign"
+  },
+  {
+   "fieldname": "commissioned_on",
+   "fieldtype": "Data",
+   "label": "Commissioned On"
+  },
+  {
+   "fieldname": "doha_port_vessel_code",
+   "fieldtype": "Data",
+   "label": "Doha Port Vessel Code"
+  },
+  {
+   "fieldname": "gross_tonnage",
+   "fieldtype": "Data",
+   "label": "Gross Tonnage"
+  },
+  {
+   "fieldname": "imo_no",
+   "fieldtype": "Data",
+   "label": "IMO No"
+  },
+  {
+   "fieldname": "master",
+   "fieldtype": "Data",
+   "label": "Master"
+  },
+  {
+   "fieldname": "mother_or_feeder",
+   "fieldtype": "Data",
+   "label": "Mother Or Feeder"
+  },
+  {
+   "fieldname": "net_tonnage",
+   "fieldtype": "Data",
+   "label": "Net Tonnage"
+  },
+  {
+   "fieldname": "operator",
+   "fieldtype": "Data",
+   "label": "Operator"
+  },
+  {
+   "fieldname": "transport_number",
+   "fieldtype": "Data",
+   "label": "Transport Number"
+  },
+  {
+   "fieldname": "column_break_gwuq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_fdnz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Vessel Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Vessel Code",
+   "reqd": 1,
+   "unique": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-29 09:12:25.810187",
+ "modified_by": "Administrator",
+ "module": "Liner",
+ "name": "Vessel",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "name1,code",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,7 +1,35 @@
 // Copyright (c) 2026, Milores and contributors
 // For license information, please see license.txt
 
+const status_colors = {
+    "Draft": "gray",
+    "IFD": "blue",
+    "DCO": "orange",
+    "EMM": "green",
+    "DSO": "purple",
+    "BFF": "green"
+};
+
 frappe.listview_settings["Import-Export Order"] = {
+    // Stop Frappe from forcing "Draft" for docstatus = 0
+    has_indicator_for_draft: true,
+
+    add_fields: ["status", "docstatus"],
+
+    get_indicator(doc) {
+        // Cancelled documents keep the standard indicator
+        if (doc.docstatus === 2) {
+            return [__("Cancelled"), "red", "docstatus,=,2"];
+        }
+
+        const status = doc.status || "Draft";
+        return [
+            __(status),
+            status_colors[status] || "gray",
+            "status,=," + status
+        ];
+    },
+
     onload(listview) {
         listview.page.add_inner_button(__("Attach XML"), () => {
             open_xml_upload_dialog(listview);
