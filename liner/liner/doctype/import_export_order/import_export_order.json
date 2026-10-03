@@ -8,8 +8,6 @@
  "engine": "InnoDB",
  "field_order": [
   "booking_tab",
-  "section_break_9zc4",
-  "amended_from",
   "main_job__vessel_details_section",
   "main_job__vessel_details",
   "vessel",
@@ -18,7 +16,6 @@
   "port",
   "project",
   "order_type",
-  "executive",
   "location",
   "column_break_bagl",
   "test",
@@ -116,7 +113,10 @@
   "delivery_agent",
   "slot_operator",
   "discharge_agent",
-  "bl_remarks"
+  "bl_remarks",
+  "connections_tab",
+  "section_break_9zc4",
+  "amended_from"
  ],
  "fields": [
   {
@@ -213,13 +213,6 @@
    "fieldname": "clients_reference",
    "fieldtype": "Data",
    "label": "Client's Reference"
-  },
-  {
-   "fieldname": "executive",
-   "fieldtype": "Link",
-   "label": "Executive",
-   "options": "Sales Person",
-   "reqd": 1
   },
   {
    "fieldname": "booking_order_details_section",
@@ -719,13 +712,28 @@
    "hidden": 1,
    "label": "DO No",
    "options": "Container Delivery Order"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2026-09-30 15:01:46.132533",
+ "links": [
+  {
+   "link_doctype": "Stock Entry",
+   "link_fieldname": "custom_importexport_order"
+  },
+  {
+   "link_doctype": "Container Delivery Order",
+   "link_fieldname": "ido_number"
+  }
+ ],
+ "modified": "2026-10-03 12:47:50.631992",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Import-Export Order",

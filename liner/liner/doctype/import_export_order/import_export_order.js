@@ -17,6 +17,10 @@ frappe.ui.form.on("Import-Export Order", {
 			make_arrival_notice(frm);
 		});
 		frm.add_custom_button(__("EDI Connect with CTC"));
+        frm.add_custom_button(__("Payment Entry"), () => make_payment_entry(frm),__("Create"));
+        frm.add_custom_button(__("Arrival Order"), function () {
+			show_arrival_order_dialog(frm);
+		}, __("Create"));
 		frm.add_custom_button(__("Delivery Order"), function () {
 			show_delivery_order_dialog(frm);
 		}, __("Create"));
@@ -26,13 +30,9 @@ frappe.ui.form.on("Import-Export Order", {
 		frm.add_custom_button(__("Detention Calculation"), function () {
 			make_detention_calculation(frm);
 		}, __("Print"));
-		frm.add_custom_button(__("Arrival Order"), function () {
-			show_arrival_order_dialog(frm);
-		}, __("Create"));
 		frm.add_custom_button(__("Return Container"), function () {
 			make_return_stock_entry(frm);
 		}, __("Create"));
-		frm.add_custom_button(__("Payment Entry"), () => make_payment_entry(frm),__("Create"));
 		
 		// if (frm.doc.order_type === "Export") {
 			frm.add_custom_button(__("Container Export"), function () {
@@ -831,7 +831,7 @@ function show_delivery_order_dialog_with_containers(frm, containers) {
                 fieldname: "container_list"
             }
         ],
-        primary_action_label: __("Create Delivery Order & Stock Entry"),
+        primary_action_label: __("Create Delivery Order"),
         primary_action: function () {
             const selected_containers = [];
 
@@ -959,159 +959,159 @@ function show_delivery_order_dialog_with_containers(frm, containers) {
 }
 
 frappe.ui.form.on("Equipment Table2", {
-	calculate_dt: function(frm, cdt, cdn) {
-		let row = locals[cdt][cdn];
+	// calculate_dt: function(frm, cdt, cdn) {
+	// 	let row = locals[cdt][cdn];
 
-		if (!row.in_date || !row.return_date) {
-			frappe.msgprint("Please enter both In Date and Return Date.");
-			return;
-		}
+	// 	if (!row.in_date || !row.return_date) {
+	// 		frappe.msgprint("Please enter both In Date and Return Date.");
+	// 		return;
+	// 	}
 
-		if (!frm.doc.line) {
-			frappe.msgprint("Line is missing in Import-Export Order.");
-			return;
-		}
+	// 	if (!frm.doc.line) {
+	// 		frappe.msgprint("Line is missing in Import-Export Order.");
+	// 		return;
+	// 	}
 
-		// Calculate total detention days
-		let detention_days = frappe.datetime.get_diff(
-			row.return_date,
-			row.in_date
-		);
+	// 	// Calculate total detention days
+	// 	let detention_days = frappe.datetime.get_diff(
+	// 		row.return_date,
+	// 		row.in_date
+	// 	);
 
-		// Same day = 1 day
-		if (detention_days <= 0) {
-			detention_days = 1;
-		}
+	// 	// Same day = 1 day
+	// 	if (detention_days <= 0) {
+	// 		detention_days = 1;
+	// 	}
 
-		// Find Detention Slab based on Line
-		frappe.db.get_list("Detention Slab", {
-			filters: {
-				line: frm.doc.line
-			},
-			fields: ["name"],
-			limit: 1
-		}).then(slabs => {
+	// 	// Find Detention Slab based on Line
+	// 	frappe.db.get_list("Detention Slab", {
+	// 		filters: {
+	// 			line: frm.doc.line
+	// 		},
+	// 		fields: ["name"],
+	// 		limit: 1
+	// 	}).then(slabs => {
 
-			if (!slabs || !slabs.length) {
-				frappe.msgprint(
-					`No Detention Slab found for Line: ${frm.doc.line}`
-				);
+	// 		if (!slabs || !slabs.length) {
+	// 			frappe.msgprint(
+	// 				`No Detention Slab found for Line: ${frm.doc.line}`
+	// 			);
 
-				frappe.model.set_value(
-					cdt,
-					cdn,
-					"dt_charges",
-					0
-				);
+	// 			frappe.model.set_value(
+	// 				cdt,
+	// 				cdn,
+	// 				"dt_charges",
+	// 				0
+	// 			);
 
-				return;
-			}
+	// 			return;
+	// 		}
 
-			let slab_name = slabs[0].name;
+	// 		let slab_name = slabs[0].name;
 
-			// Get complete Detention Slab document
-			frappe.db.get_doc(
-				"Detention Slab",
-				slab_name
-			).then(slab => {
+	// 		// Get complete Detention Slab document
+	// 		frappe.db.get_doc(
+	// 			"Detention Slab",
+	// 			slab_name
+	// 		).then(slab => {
 
-				if (!slab.charges || !slab.charges.length) {
-					frappe.msgprint(
-						`No Charges Slab found in ${slab_name}.`
-					);
+	// 			if (!slab.charges || !slab.charges.length) {
+	// 				frappe.msgprint(
+	// 					`No Charges Slab found in ${slab_name}.`
+	// 				);
 
-					frappe.model.set_value(
-						cdt,
-						cdn,
-						"dt_charges",
-						0
-					);
+	// 				frappe.model.set_value(
+	// 					cdt,
+	// 					cdn,
+	// 					"dt_charges",
+	// 					0
+	// 				);
 
-					return;
-				}
+	// 				return;
+	// 			}
 
-				// Sort slabs by days ascending
-				let charges = [...slab.charges].sort(
-					(a, b) => cint(a.days) - cint(b.days)
-				);
+	// 			// Sort slabs by days ascending
+	// 			let charges = [...slab.charges].sort(
+	// 				(a, b) => cint(a.days) - cint(b.days)
+	// 			);
 
-				// Find applicable slab
-				let applicable_charge = charges.find(charge => {
-					return detention_days <= cint(charge.days);
-				});
+	// 			// Find applicable slab
+	// 			let applicable_charge = charges.find(charge => {
+	// 				return detention_days <= cint(charge.days);
+	// 			});
 
-				if (!applicable_charge) {
-					frappe.msgprint(
-						`No detention slab available for ${detention_days} days.`
-					);
+	// 			if (!applicable_charge) {
+	// 				frappe.msgprint(
+	// 					`No detention slab available for ${detention_days} days.`
+	// 				);
 
-					frappe.model.set_value(
-						cdt,
-						cdn,
-						"dt_charges",
-						0
-					);
+	// 				frappe.model.set_value(
+	// 					cdt,
+	// 					cdn,
+	// 					"dt_charges",
+	// 					0
+	// 				);
 
-					return;
-				}
+	// 				return;
+	// 			}
 
-				let charge_per_day = flt(
-					applicable_charge.charge_per_day
-				);
+	// 			let charge_per_day = flt(
+	// 				applicable_charge.charge_per_day
+	// 			);
 
-				/*
-				* Calculate previous/free days.
-				*
-				* Example:
-				* 7 days  = 0/day
-				* 14 days = 20/day
-				*
-				* 9 total days:
-				* 9 - 7 = 2 chargeable days
-				*
-				* 14 total days:
-				* 14 - 7 = 7 chargeable days
-				*/
-				let previous_slab = charges.find(charge => {
-					return cint(charge.days) < cint(applicable_charge.days);
-				});
+	// 			/*
+	// 			* Calculate previous/free days.
+	// 			*
+	// 			* Example:
+	// 			* 7 days  = 0/day
+	// 			* 14 days = 20/day
+	// 			*
+	// 			* 9 total days:
+	// 			* 9 - 7 = 2 chargeable days
+	// 			*
+	// 			* 14 total days:
+	// 			* 14 - 7 = 7 chargeable days
+	// 			*/
+	// 			let previous_slab = charges.find(charge => {
+	// 				return cint(charge.days) < cint(applicable_charge.days);
+	// 			});
 
-				let free_days = 0;
+	// 			let free_days = 0;
 
-				if (previous_slab) {
-					free_days = cint(previous_slab.days);
-				}
+	// 			if (previous_slab) {
+	// 				free_days = cint(previous_slab.days);
+	// 			}
 
-				// Charge only days exceeding the previous slab
-				let chargeable_days = Math.max(
-					0,
-					detention_days - free_days
-				);
+	// 			// Charge only days exceeding the previous slab
+	// 			let chargeable_days = Math.max(
+	// 				0,
+	// 				detention_days - free_days
+	// 			);
 
-				let detention_charges =
-					chargeable_days * charge_per_day;
+	// 			let detention_charges =
+	// 				chargeable_days * charge_per_day;
 
-				// Set Detention Charges
-				frappe.model.set_value(
-					cdt,
-					cdn,
-					"dt_charges",
-					detention_charges
-				);
+	// 			// Set Detention Charges
+	// 			frappe.model.set_value(
+	// 				cdt,
+	// 				cdn,
+	// 				"dt_charges",
+	// 				detention_charges
+	// 			);
 
-				frappe.show_alert({
-					message:
-						`Total Detention Days: ${detention_days}<br>` +
-						`Free Days: ${free_days}<br>` +
-						`Chargeable Days: ${chargeable_days}<br>` +
-						`Slab: ${applicable_charge.days} days<br>` +
-						`Rate: ${charge_per_day}/day<br>` +
-						`Total: ${detention_charges}`,
-					indicator: "green"
-				});
-			});
-		});
-	},
+	// 			frappe.show_alert({
+	// 				message:
+	// 					`Total Detention Days: ${detention_days}<br>` +
+	// 					`Free Days: ${free_days}<br>` +
+	// 					`Chargeable Days: ${chargeable_days}<br>` +
+	// 					`Slab: ${applicable_charge.days} days<br>` +
+	// 					`Rate: ${charge_per_day}/day<br>` +
+	// 					`Total: ${detention_charges}`,
+	// 				indicator: "green"
+	// 			});
+	// 		});
+	// 	});
+	// },
 	create_dt: function(frm, cdt, cdn) {
 		let row = locals[cdt][cdn];
 
@@ -1176,8 +1176,258 @@ frappe.ui.form.on("Equipment Table2", {
 				});
 			}
 		);
+	},
+    in_date: function(frm, cdt, cdn) {
+		calculate_detention_charges(frm, cdt, cdn);
+	},
+
+	return_date: function(frm, cdt, cdn) {
+		calculate_detention_charges(frm, cdt, cdn);
 	}
 });
+
+function calculate_detention_charges(frm, cdt, cdn) {
+	let row = locals[cdt][cdn];
+
+	// ---------------------------------------------------------
+	// Check dates
+	// ---------------------------------------------------------
+	if (!row.in_date || !row.return_date) {
+		frappe.model.set_value(cdt, cdn, "free_days", 0);
+		frappe.model.set_value(cdt, cdn, "dt_charges", 0);
+		return;
+	}
+
+	// ---------------------------------------------------------
+	// Check Line
+	// ---------------------------------------------------------
+	if (!frm.doc.line) {
+		frappe.model.set_value(cdt, cdn, "free_days", 0);
+		frappe.model.set_value(cdt, cdn, "dt_charges", 0);
+
+		frappe.msgprint(
+			"Line is missing in Import-Export Order."
+		);
+
+		return;
+	}
+
+	// ---------------------------------------------------------
+	// Calculate detention days
+	// ---------------------------------------------------------
+	let detention_days = frappe.datetime.get_diff(
+		row.return_date,
+		row.in_date
+	);
+
+	// Same day = 1 day
+	if (detention_days <= 0) {
+		detention_days = 1;
+	}
+
+	// ---------------------------------------------------------
+	// Fetch Detention Slab
+	// ---------------------------------------------------------
+	frappe.db.get_list("Detention Slab", {
+		filters: {
+			line: frm.doc.line,
+            item: row.container_no,
+            container_type: row.c_type,
+            type: 'Liner'
+		},
+		fields: ["name"],
+		limit: 1
+	}).then(slabs => {
+
+		if (!slabs || !slabs.length) {
+
+			frappe.model.set_value(
+				cdt,
+				cdn,
+				"free_days",
+				0
+			);
+
+			frappe.model.set_value(
+				cdt,
+				cdn,
+				"dt_charges",
+				0
+			);
+
+			frappe.show_alert({
+				message:
+					`No Detention Slab found for Container: ${row.container_no}`,
+				indicator: "orange"
+			});
+
+			return null;
+		}
+
+		return frappe.db.get_doc(
+			"Detention Slab",
+			slabs[0].name
+		);
+
+	}).then(slab => {
+
+		if (!slab) {
+			return;
+		}
+
+		// -----------------------------------------------------
+		// Check Charges Slab
+		// -----------------------------------------------------
+		if (!slab.charges || !slab.charges.length) {
+
+			frappe.model.set_value(
+				cdt,
+				cdn,
+				"free_days",
+				0
+			);
+
+			frappe.model.set_value(
+				cdt,
+				cdn,
+				"dt_charges",
+				0
+			);
+
+			frappe.show_alert({
+				message:
+					`No Charges Slab found in ${slab.name}`,
+				indicator: "orange"
+			});
+
+			return;
+		}
+
+		// -----------------------------------------------------
+		// Sort slabs by days
+		// -----------------------------------------------------
+		let charges = [...slab.charges].sort(
+			(a, b) => cint(a.days) - cint(b.days)
+		);
+
+		// -----------------------------------------------------
+		// Find FREE DAYS
+		//
+		// Example:
+		// 7 days  = 0/day
+		// 14 days = 20/day
+		//
+		// free_days = 7
+		// -----------------------------------------------------
+		let free_day_slabs = charges.filter(charge => {
+			return flt(charge.charge_per_day) === 0;
+		});
+
+		let free_days = 0;
+
+		if (free_day_slabs.length) {
+			free_days = Math.max(
+				...free_day_slabs.map(charge => cint(charge.days))
+			);
+		}
+
+		// -----------------------------------------------------
+		// SET FREE DAYS IN EQUIPMENT TABLE2
+		// -----------------------------------------------------
+		frappe.model.set_value(
+			cdt,
+			cdn,
+			"free_days",
+			free_days
+		);
+
+		// -----------------------------------------------------
+		// Find applicable charge slab
+		// -----------------------------------------------------
+		let applicable_charge = charges.find(charge => {
+			return detention_days <= cint(charge.days);
+		});
+
+		if (!applicable_charge) {
+
+			frappe.model.set_value(
+				cdt,
+				cdn,
+				"dt_charges",
+				0
+			);
+
+			frappe.show_alert({
+				message:
+					`Detention Days: ${detention_days}<br>` +
+					`Free Days: ${free_days}<br>` +
+					`No applicable detention slab found.`,
+				indicator: "orange"
+			});
+
+			return;
+		}
+
+		// -----------------------------------------------------
+		// Rate from applicable slab
+		// -----------------------------------------------------
+		let charge_per_day = flt(
+			applicable_charge.charge_per_day
+		);
+
+		// -----------------------------------------------------
+		// Calculate chargeable days
+		// -----------------------------------------------------
+		let chargeable_days = Math.max(
+			0,
+			detention_days - free_days
+		);
+
+		// -----------------------------------------------------
+		// Calculate total charges
+		// -----------------------------------------------------
+		let detention_charges =
+			chargeable_days * charge_per_day;
+
+		// -----------------------------------------------------
+		// SET DETENTION CHARGES
+		// -----------------------------------------------------
+		frappe.model.set_value(
+			cdt,
+			cdn,
+			"dt_charges",
+			detention_charges
+		);
+
+		// -----------------------------------------------------
+		// SHOW ALERT
+		// -----------------------------------------------------
+		if (chargeable_days === 0) {
+
+			frappe.show_alert({
+				message:
+					`Detention Days: ${detention_days}<br>` +
+					`Free Days: ${free_days}<br>` +
+					`Chargeable Days: 0<br>` +
+					`Rate: ${charge_per_day}/day<br>` +
+					`Total Detention Charges: 0`,
+				indicator: "blue"
+			});
+
+		} else {
+
+			frappe.show_alert({
+				message:
+					`Detention Days: ${detention_days}<br>` +
+					`Free Days: ${free_days}<br>` +
+					`Chargeable Days: ${chargeable_days}<br>` +
+					`Rate: ${charge_per_day}/day<br>` +
+					`Total Detention Charges: ${detention_charges}`,
+				indicator: "green"
+			});
+		}
+	});
+}
 
 function download_manifest_xml(frm) {
 	if (frm.is_new()) {
@@ -1359,6 +1609,16 @@ function show_arrival_order_dialog(frm) {
             }
 
             const containers = r.message || [];
+
+            if (!frm.doc.company) {
+                frappe.msgprint({
+                    message: __(
+                        "Please fill company in Booking Tab."
+                    ),
+                    indicator: "red"
+                });
+                return;
+            }
 
             if (!containers.length) {
                 frappe.msgprint({
@@ -1630,8 +1890,7 @@ function make_return_stock_entry(frm) {
                 frappe.msgprint({
                     title: __("No Containers"),
                     message: __(
-                        "No delivered containers are available to return. " +
-                            "Please create a Delivery Order first."
+                        "No delivered containers are available to return."
                     ),
                     indicator: "orange"
                 });

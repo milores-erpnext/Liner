@@ -9,11 +9,12 @@
  "field_order": [
   "line",
   "line_name",
-  "port",
   "container_type",
+  "type",
   "column_break_ixwj",
   "item",
   "item_name",
+  "port",
   "currency",
   "section_break_uaxm",
   "charges"
@@ -53,7 +54,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item",
-   "link_filters": "[[\"Item\",\"is_stock_item\",\"=\",0]]",
+   "link_filters": "[]",
    "options": "Item",
    "reqd": 1
   },
@@ -77,12 +78,19 @@
    "label": "Container Type",
    "options": "Container Type",
    "reqd": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "\nLiner\nYard Management",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-24 19:57:41.290555",
+ "modified": "2026-10-03 16:25:37.914133",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Detention Slab",

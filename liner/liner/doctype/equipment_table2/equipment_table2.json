@@ -15,20 +15,19 @@
   "free_days",
   "in_date",
   "return_date",
-  "calculate_dt",
-  "create_dt",
   "dt_charges",
+  "create_dt",
   "dth",
   "og",
-  "dg",
-  "delivery_order_printed"
+  "dg"
  ],
  "fields": [
   {
    "fieldname": "container_no",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Container No"
+   "label": "Container No",
+   "options": "Item"
   },
   {
    "fieldname": "c_type",
@@ -59,7 +58,8 @@
    "fieldname": "free_days",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Free Days"
+   "label": "Free Days",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -83,14 +83,6 @@
    "label": "DG"
   },
   {
-   "columns": 4,
-   "default": "0",
-   "fieldname": "delivery_order_printed",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "Delivery Order Printed"
-  },
-  {
    "fieldname": "in_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -110,12 +102,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "calculate_dt",
-   "fieldtype": "Button",
-   "in_list_view": 1,
-   "label": "Calculate DT"
-  },
-  {
    "fieldname": "create_dt",
    "fieldtype": "Button",
    "in_list_view": 1,
@@ -126,7 +112,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-10-01 11:50:35.767196",
+ "modified": "2026-10-03 16:05:53.110090",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Equipment Table2",
