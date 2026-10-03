@@ -3247,7 +3247,7 @@ def get_returned_containers_for_export(import_export_order):
 			  AND se.custom_importexport_order = %(order)s
 			  AND sed.custom_importexport_order = %(order)s
 			  AND sed.item_code = %(item)s
-			  AND se.custom_container_transaction_type = 'Container Export'
+			  AND sed.custom_container_transaction_type = 'Container Export'
 			LIMIT 1
 			""",
 			{
