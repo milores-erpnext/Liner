@@ -3070,6 +3070,7 @@ def get_delivered_containers_for_return(import_export_order):
 			  AND se.custom_importexport_order = %(order)s
 			  AND sed.custom_importexport_order = %(order)s
 			  AND sed.item_code = %(item)s
+			  AND sed.custom_container_transaction_type = 'Customer Return Container'
 			""",
 			{
 				"order": import_export_order,
