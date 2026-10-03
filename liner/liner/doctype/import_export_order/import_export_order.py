@@ -3165,79 +3165,10 @@ def create_return_stock_entries(import_export_order, warehouse, containers):
 
 @frappe.whitelist()
 def get_returned_containers_for_export(import_export_order):
-	"""
-	Return containers from table_tvep that:
-	  - have been delivered (delivery_order_printed = 1)
-	  - have been returned (a Material Receipt exists AFTER the delivery)
-	  - have NOT yet been exported (no Material Issue after the return)
-
-	Also include the warehouse from the Return Material Receipt
-	so the Export Material Issue can pull from it.
-	"""
 	order = frappe.get_doc("Import-Export Order", import_export_order)
 	result = []
 
 	for row in order.table_tvep:
-		if not row.container_no:
-			continue
-
-		# Find the latest delivery (Material Issue)
-		delivery = frappe.db.sql(
-			"""
-			SELECT se.name AS stock_entry, se.creation AS creation
-			FROM `tabStock Entry` se
-			INNER JOIN `tabStock Entry Detail` sed
-				ON sed.parent = se.name
-			WHERE se.docstatus = 1
-			  AND se.stock_entry_type = 'Material Receipt'
-			  AND sed.custom_container_transaction_type = 'Customer Return Container'
-			  AND se.custom_importexport_order = %(order)s
-			  AND sed.custom_importexport_order = %(order)s
-			  AND sed.item_code = %(item)s
-			LIMIT 1
-			""",
-			{
-				"order": import_export_order,
-				"item": row.container_no,
-			},
-			as_dict=True,
-		)
-
-		if not delivery:
-			continue
-
-		# Find the return (Material Receipt AFTER the delivery)
-		returned = frappe.db.sql(
-			"""
-			SELECT
-				se.name AS stock_entry,
-				se.creation AS creation,
-				sed.t_warehouse AS warehouse,
-				sed.qty AS qty,
-				sed.uom AS uom
-			FROM `tabStock Entry` se
-			INNER JOIN `tabStock Entry Detail` sed
-				ON sed.parent = se.name
-			WHERE se.docstatus = 1
-			  AND se.stock_entry_type = 'Material Receipt'
-			  AND se.custom_importexport_order = %(order)s
-			  AND sed.custom_importexport_order = %(order)s
-			  AND sed.item_code = %(item)s
-			ORDER BY se.creation DESC
-			LIMIT 1
-			""",
-			{
-				"order": import_export_order,
-				"item": row.container_no
-			},
-			as_dict=True,
-		)
-
-		if not returned:
-			# Not yet returned — skip
-			continue
-
-		# Skip if already exported (Material Issue AFTER the return)
 		exported = frappe.db.sql(
 			"""
 			SELECT se.name
@@ -3247,34 +3178,30 @@ def get_returned_containers_for_export(import_export_order):
 			WHERE se.docstatus = 1
 			  AND se.stock_entry_type = 'Material Issue'
 			  AND se.custom_importexport_order = %(order)s
-			  AND sed.importexport_order = %(order)s
+			  AND sed.custom_importexport_order = %(order)s
 			  AND sed.item_code = %(item)s
-			  AND se.creation > %(return_creation)s
-			LIMIT 1
+			  AND sed.custom_container_transaction_type = 'Container Export'
 			""",
 			{
 				"order": import_export_order,
-				"item": row.container_no,
-				"return_creation": returned[0].creation,
+				"item": row.container_no
 			},
 			as_dict=True,
 		)
 
-		if exported:
-			continue
-
-		result.append(
-			{
-				"name": row.name,
-				"container_no": row.container_no,
-				"c_type": row.c_type,
-				"seal_no": row.seal_no,
-				"source_warehouse": returned[0].warehouse or "",
-				"source_stock_entry": returned[0].stock_entry,
-				"qty": returned[0].qty or 1,
-				"uom": returned[0].uom or "Nos",
-			}
-		)
+		if not exported:
+			result.append(
+				{
+					"name": row.name,
+					"container_no": row.container_no,
+					"c_type": row.c_type,
+					"seal_no": row.seal_no,
+					"source_warehouse": returned[0].warehouse or "",
+					"source_stock_entry": returned[0].stock_entry,
+					"qty": returned[0].qty or 1,
+					"uom": returned[0].uom or "Nos",
+				}
+			)
 
 	return result
 
