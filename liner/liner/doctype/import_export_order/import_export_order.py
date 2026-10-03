@@ -3068,17 +3068,12 @@ def get_delivered_containers_for_return(import_export_order):
 			WHERE se.docstatus = 1
 			  AND se.stock_entry_type = 'Material Receipt'
 			  AND se.custom_importexport_order = %(order)s
-			  AND sed.importexport_order = %(order)s
+			  AND sed.custom_importexport_order = %(order)s
 			  AND sed.item_code = %(item)s
-			  AND se.creation > (
-				  SELECT creation FROM `tabStock Entry` WHERE name = %(issue)s
-			  )
-			LIMIT 1
 			""",
 			{
 				"order": import_export_order,
-				"item": row.container_no,
-				"issue": delivery[0].stock_entry,
+				"item": row.container_no
 			},
 			as_dict=True,
 		)
