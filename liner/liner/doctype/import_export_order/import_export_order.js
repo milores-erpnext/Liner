@@ -1125,11 +1125,6 @@ frappe.ui.form.on("Equipment Table2", {
 			return;
 		}
 
-		if (!frm.doc.project) {
-			frappe.msgprint("Project is missing.");
-			return;
-		}
-
 		if (!frm.doc.line) {
 			frappe.msgprint("Line is missing.");
 			return;

@@ -462,8 +462,8 @@ def create_freight_charges_sales_invoice(import_export_order):
 	if not order.company:
 		frappe.throw("Company is missing in Import-Export Order.")
 
-	if not order.project:
-		frappe.throw("Project is missing in Import-Export Order.")
+	# if not order.project:
+	# 	frappe.throw("Project is missing in Import-Export Order.")
 
 	if not order.grand_total:
 		frappe.throw("Grand Total is missing or zero.")
@@ -559,8 +559,8 @@ def create_liner_charges_purchase_invoice(import_export_order):
 	if not order.company:
 		frappe.throw("Company is missing in Import-Export Order.")
 
-	if not order.project:
-		frappe.throw("Project is missing in Import-Export Order.")
+	# if not order.project:
+	# 	frappe.throw("Project is missing in Import-Export Order.")
 
 	if not order.total_liner:
 		frappe.throw("Total Liner is missing or zero.")
@@ -949,8 +949,8 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 	if not order.company:
 		frappe.throw("Company is missing in Import-Export Order.")
 
-	if not order.project:
-		frappe.throw("Project is missing in Import-Export Order.")
+	# if not order.project:
+	# 	frappe.throw("Project is missing in Import-Export Order.")
 
 	if not order.line:
 		frappe.throw("Line is missing in Import-Export Order.")
@@ -2147,8 +2147,8 @@ def create_other_charges_sales_invoice(import_export_order):
 	if not order.company:
 		frappe.throw("Company is missing in Import-Export Order.")
 
-	if not order.project:
-		frappe.throw("Project is missing in Import-Export Order.")
+	# if not order.project:
+	# 	frappe.throw("Project is missing in Import-Export Order.")
 
 	# Validate Other Charges table
 	if not order.other_charges:
@@ -2851,9 +2851,7 @@ def get_arrived_containers_for_delivery(import_export_order):
 			  AND se.custom_importexport_order = %(order)s
 			  AND sed.custom_importexport_order = %(order)s
 			  AND sed.item_code = %(item)s
-			  AND sed.custom_container_transaction_type = "From Delivery Order"
-			ORDER BY se.creation DESC
-			LIMIT 1
+			  AND sed.custom_container_transaction_type = "From Arrival Order"
 			""",
 			{
 				"order": import_export_order,
@@ -3043,13 +3041,11 @@ def get_delivered_containers_for_return(import_export_order):
 			INNER JOIN `tabStock Entry Detail` sed
 				ON sed.parent = se.name
 			WHERE se.docstatus = 1
-			  AND se.stock_entry_type = 'Material Receipt'
+			  AND se.stock_entry_type = 'Material Issue'
 			  AND sed.custom_container_transaction_type = 'From Delivery Order'
 			  AND se.custom_importexport_order = %(order)s
 			  AND sed.custom_importexport_order = %(order)s
 			  AND sed.item_code = %(item)s
-			ORDER BY se.creation DESC
-			LIMIT 1
 			""",
 			{
 				"order": import_export_order,
