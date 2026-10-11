@@ -408,6 +408,21 @@ def _extract_booking_values(values, booking):
 					c_type = (container.attrib.get("CType") or "").strip()
 					if c_type:
 						equipment_summary[c_type] = equipment_summary.get(c_type, 0) + 1
+
+					container_no = (container.attrib.get("ContainerNo") or "").strip()
+					c_type = (container.attrib.get("CType") or "").strip()
+
+					if container_no:
+						if not frappe.db.exists("Item", container_no):
+							new_item = frappe.new_doc("Item")
+							new_item.item_code = container_no
+							new_item.item_name = container_no
+							new_item.item_group = "Container"
+							new_item.stock_uom = "Nos"
+							new_item.is_stock_item = 1
+							new_item.custom_container_type = c_type
+
+							new_item.save(ignore_permissions=True)
 					equipment_detail.append({
 						"c_type": c_type,
 						"container_no": (container.attrib.get("ContainerNo") or "").strip(),
