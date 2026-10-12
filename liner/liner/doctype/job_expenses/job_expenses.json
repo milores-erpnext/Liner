@@ -16,35 +16,47 @@
  ],
  "fields": [
   {
+   "columns": 1,
    "fieldname": "ctype",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "CType",
    "options": "Container Type"
   },
   {
+   "columns": 1,
    "fieldname": "element",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Element"
   },
   {
+   "columns": 1,
    "fieldname": "rate",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Rate"
   },
   {
+   "columns": 1,
    "fieldname": "currency",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Currency",
    "options": "Currency"
   },
   {
+   "columns": 1,
    "fieldname": "collect_by",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Collect By"
   },
   {
+   "columns": 1,
    "fieldname": "no_of_containers",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "No of Containers"
   }
  ],
@@ -52,7 +64,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-07 23:24:29.562719",
+ "modified": "2026-10-12 12:50:41.491024",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Job Expenses",

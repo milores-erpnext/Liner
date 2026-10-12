@@ -1130,12 +1130,15 @@ frappe.ui.form.on("Equipment Table2", {
 			return;
 		}
 
-		if (!row.dt_charges || flt(row.dt_charges) <= 0) {
-			frappe.msgprint(
-				"Please calculate Detention Charges first."
-			);
-			return;
-		}
+		if (!row.in_date || !row.return_date) {
+            frappe.msgprint("Please calculate Detention Charges first.");
+            return;
+        }
+
+        if (!row.in_date && !row.return_date) {
+            frappe.msgprint("Please calculate Detention Charges first.");
+            return;
+        }
 
 		frappe.confirm(
 			`Create Sales Invoice for detention charges of <b>${row.container_no || ""}</b>?`,
@@ -1226,7 +1229,7 @@ function calculate_detention_charges(frm, cdt, cdn) {
 	frappe.db.get_list("Detention Slab", {
 		filters: {
 			line: frm.doc.line,
-            item: row.container_no,
+            // item: row.container_no,
             container_type: row.c_type,
             type: 'Liner'
 		},

@@ -415,13 +415,12 @@ def _extract_booking_values(values, booking):
 					if container_no:
 						if not frappe.db.exists("Item", container_no):
 							new_item = frappe.new_doc("Item")
-							new_item.item_code = container_no
+                           	new_item.item_code = container_no
 							new_item.item_name = container_no
 							new_item.item_group = "Container"
 							new_item.stock_uom = "Nos"
 							new_item.is_stock_item = 1
 							new_item.custom_container_type = c_type
-
 							new_item.save(ignore_permissions=True)
 					equipment_detail.append({
 						"c_type": c_type,
@@ -999,7 +998,7 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 		},
 		fields=[
 			"name",
-			"item",
+			# "item",
 			"item_name",
 			"currency"
 		],
@@ -1013,10 +1012,10 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 
 	detention_slab = detention_slabs[0]
 
-	if not detention_slab.item:
-		frappe.throw(
-			f"Item is not configured in Detention Slab {detention_slab.name}."
-		)
+	# if not detention_slab.item:
+	# 	frappe.throw(
+	# 		f"Item is not configured in Detention Slab {detention_slab.name}."
+	# 	)
 
 	# Create Sales Invoice
 	sales_invoice = frappe.new_doc("Sales Invoice")
@@ -1027,7 +1026,7 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 
 	# Add item
 	sales_invoice.append("items", {
-		"item_code": detention_slab.item,
+		"item_code": equipment_row.container_no,
 		"qty": 1,
 		"rate": dt_charges,
 		"project": order.project
@@ -1051,7 +1050,7 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 		"customer": sales_invoice.customer,
 		"company": sales_invoice.company,
 		"project": sales_invoice.project,
-		"item": detention_slab.item,
+		"item": equipment_row.container_no,
 		"qty": 1,
 		"rate": dt_charges
 	}
@@ -2338,15 +2337,38 @@ def send_arrival_notification(import_export_order):
 	)
 	team_emails = list({e for e in team_emails})
 
-	attachments = [
-		frappe.attach_print(
-			doctype="Import-Export Order",
-			name=order.name,
-			print_format="Cargo Arrival Notice",
-			file_name=f"Arrival Notice - {order.name}",
-			print_letterhead=True,
+	# attachments = [
+	# 	frappe.attach_print(
+	# 		doctype="Import-Export Order",
+	# 		name=order.name,
+	# 		print_format="Cargo Arrival Notice",
+	# 		file_name=f"Arrival Notice - {order.name}",
+	# 		print_letterhead=True,
+	# 		letterhead="Company Letterhead - icss"
+	# 	)
+	# ]
+	attachments = []
+
+	print_format = "Cargo Arrival Notice"
+	letterhead = "Company Letterhead - icss"
+
+	if not frappe.db.exists("Letter Head", letterhead):
+		frappe.msgprint(f"Letterhead '{letterhead}' not found.")
+
+	elif not frappe.db.exists("Print Format", print_format):
+		frappe.msgprint(f"Print Format '{print_format}' not found.")
+
+	else:
+		attachments.append(
+			frappe.attach_print(
+				doctype="Import-Export Order",
+				name=order.name,
+				print_format=print_format,
+				file_name=f"Arrival Notice - {order.name}",
+				print_letterhead=True,
+				letterhead=letterhead
+			)
 		)
-	]
 
 	frappe.sendmail(
 		recipients=[executive_email],
