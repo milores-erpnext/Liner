@@ -415,7 +415,7 @@ def _extract_booking_values(values, booking):
 					if container_no:
 						if not frappe.db.exists("Item", container_no):
 							new_item = frappe.new_doc("Item")
-                           	new_item.item_code = container_no
+						   	new_item.item_code = container_no
 							new_item.item_name = container_no
 							new_item.item_group = "Container"
 							new_item.stock_uom = "Nos"
