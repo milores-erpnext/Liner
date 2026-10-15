@@ -494,6 +494,7 @@ def create_freight_charges_sales_invoice(import_export_order):
 	sales_invoice.customer = order.customer
 	sales_invoice.company = order.company
 	sales_invoice.project = order.project
+	sales_invoice.custom_ref_importexport = import_export_order
 
 	items_added = 0
 
@@ -507,7 +508,7 @@ def create_freight_charges_sales_invoice(import_export_order):
 		# Get quantity from Equipment Table1 based on eq_type
 		qty = frappe.db.get_value(
 			"Equipment Table1",
-			{"type": row.eq_type},
+			{"type": row.eq_type, "parent": import_export_order},
 			"nos"
 		) or 0
 
@@ -535,7 +536,7 @@ def create_freight_charges_sales_invoice(import_export_order):
 	# Make sure at least one item was added
 	if not items_added:
 		frappe.throw(
-			"No valid items found in Contract Agreement table."
+			"No valid items found in Tariff Charges table."
 		)
 
 	# Set defaults and calculate totals
@@ -591,6 +592,7 @@ def create_liner_charges_purchase_invoice(import_export_order):
 	purchase_invoice.supplier = order.line
 	purchase_invoice.company = order.company
 	purchase_invoice.project = order.project
+	purchase_invoice.custom_ref_importexport = import_export_order
 
 	items_added = 0
 
@@ -608,7 +610,7 @@ def create_liner_charges_purchase_invoice(import_export_order):
 		# Get quantity from Equipment Table1 based on eq_type
 		qty = frappe.db.get_value(
 			"Equipment Table1",
-			{"type": row.eq_type},
+			{"type": row.eq_type, "parent": import_export_order},
 			"nos"
 		) or 0
 
@@ -636,7 +638,7 @@ def create_liner_charges_purchase_invoice(import_export_order):
 	# Make sure at least one item was added
 	if not items_added:
 		frappe.throw(
-			"No valid items found in Contract Agreement table."
+			"No valid items found in Tariff Charges table."
 		)
 
 	# Set defaults and calculate totals
@@ -705,7 +707,7 @@ def make_sales_invoice(source_name, target_doc=None):
 		target.due_date = frappe.utils.today()
 
 		# Link back to Import-Export Order (optional custom field)
-		target.import_export_order = source.name
+		target.custom_ref_importexport = source.name
 
 	doc = get_mapped_doc(
 		"Import-Export Order",
@@ -1023,6 +1025,7 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 	sales_invoice.customer = order.customer
 	sales_invoice.company = order.company
 	sales_invoice.project = order.project
+	sales_invoice.custom_ref_importexport = import_export_order
 
 	# Add item
 	sales_invoice.append("items", {
@@ -2174,6 +2177,7 @@ def create_other_charges_sales_invoice(import_export_order):
 	sales_invoice.customer = order.customer
 	sales_invoice.company = order.company
 	sales_invoice.project = order.project
+	sales_invoice.custom_ref_importexport = import_export_order
 
 	items_added = 0
 
@@ -2223,6 +2227,7 @@ def create_other_charges_sales_invoice(import_export_order):
 		"customer": sales_invoice.customer,
 		"company": sales_invoice.company,
 		"project": sales_invoice.project,
+		"custom_ref_importexport" : sales_invoice.custom_ref_importexport,
 		"items": [
 			{
 				"item_code": item.item_code,
@@ -2306,7 +2311,8 @@ def print_gate_pass(docname):
 	html = frappe.get_print(
 		doctype="Import-Export Order",
 		name=doc.name,
-		print_format="Gate Pass"
+		print_format="Gate Pass",
+		letterhead="Company Letterhead - ICSS"
 	)
 
 	return html
@@ -2350,7 +2356,7 @@ def send_arrival_notification(import_export_order):
 	attachments = []
 
 	print_format = "Cargo Arrival Notice"
-	letterhead = "Company Letterhead - icss"
+	letterhead = "Company Letterhead - ICSS"
 
 	if not frappe.db.exists("Letter Head", letterhead):
 		frappe.msgprint(f"Letterhead '{letterhead}' not found.")

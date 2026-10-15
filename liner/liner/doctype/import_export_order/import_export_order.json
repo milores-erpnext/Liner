@@ -168,7 +168,6 @@
    "depends_on": "eval:doc.company",
    "fieldname": "project",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "Project",
    "options": "Project"
   },
@@ -637,6 +636,7 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.contract_agreement[0]",
    "fieldname": "section_break_ekda",
    "fieldtype": "Section Break"
   },
@@ -716,7 +716,7 @@
   {
    "fieldname": "connections_tab",
    "fieldtype": "Tab Break",
-   "label": "Connections",
+   "label": "Connections\ud83d\udd17",
    "show_dashboard": 1
   }
  ],
@@ -725,15 +725,32 @@
  "is_submittable": 1,
  "links": [
   {
+   "group": "Reference",
    "link_doctype": "Stock Entry",
    "link_fieldname": "custom_importexport_order"
   },
   {
+   "group": "Reference",
    "link_doctype": "Container Delivery Order",
    "link_fieldname": "ido_number"
+  },
+  {
+   "group": "Reference",
+   "link_doctype": "Sales Invoice",
+   "link_fieldname": "custom_ref_importexport"
+  },
+  {
+   "group": "Reference",
+   "link_doctype": "Purchase Invoice",
+   "link_fieldname": "custom_ref_importexport"
+  },
+  {
+   "group": "Reference",
+   "link_doctype": "Payment Entry",
+   "link_fieldname": "custom_reference_importexport"
   }
  ],
- "modified": "2026-10-03 12:47:50.631992",
+ "modified": "2026-10-15 16:37:16.407145",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Import-Export Order",
