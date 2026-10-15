@@ -1,0 +1,21 @@
+{
+ "app": "liner",
+ "bg_color": "blue",
+ "creation": "2026-10-15 22:21:50.086819",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "App",
+ "idx": 0,
+ "label": "Liner",
+ "link": "/desk/import-export-order",
+ "link_type": "External",
+ "logo_url": "/assets/liner/images/logo.png",
+ "modified": "2026-10-15 22:24:31.581743",
+ "modified_by": "Administrator",
+ "name": "Liner",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}

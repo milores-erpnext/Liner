@@ -9,7 +9,6 @@ app_license = "mit"
 # ------------------
 
 # required_apps = []
-app_logo_url = "/assets/liner/images/logo.png"
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -31,12 +30,6 @@ add_to_apps_screen = [
         # "has_permission": "liner.api.permission.has_app_permission",
     }
 ]
-
-# Favicon and login page logo
-website_context = {
-    "favicon": "/assets/liner/images/logo.png",
-    "splash_image": "/assets/liner/images/logo-full.png",
-}
 
 # Includes in <head>
 # ------------------
