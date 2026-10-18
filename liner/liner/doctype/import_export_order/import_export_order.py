@@ -3372,27 +3372,28 @@ def create_export_stock_entries(import_export_order, warehouse, containers):
 	return created_entries
 
 def send_pending_arrival_notifications():
-    docs = frappe.get_all(
-        "Import-Export Order",
-        filters={"docstatus": 1},
-        pluck="name"
-    )
-
-    for doc_name in docs:
-        payment_entry_exists = frappe.db.exists(
-            "Payment Entry",
-            {
-                "custom_reference_importexport": doc_name,
-                "docstatus": ["!=", 2],
-            }
-        )
-
-        if not payment_entry_exists:
-            try:
-                send_arrival_notification(doc_name)
-            except Exception:
-                frappe.log_error(
-                    title=f"Arrival Notice Failed: {doc_name}",
-                    message=frappe.get_traceback()
-                )
+	docs = frappe.get_all(
+		"Import-Export Order",
+		filters={"docstatus": 1},
+		pluck="name"
+	)
+	print(f"\n\ndocs={docs}\n\n")
+	for doc_name in docs:
+		payment_entry_exists = frappe.db.exists(
+			"Payment Entry",
+			{
+				"custom_reference_importexport": doc_name,
+				"docstatus": ["!=", 2],
+			}
+		)
+		print(f"\n\npayment_entry_exists={payment_entry_exists}\n\n")
+		if not payment_entry_exists:
+			print("\n\nEnter\n\n")
+			try:
+				send_arrival_notification(doc_name)
+			except Exception:
+				frappe.log_error(
+					title=f"Arrival Notice Failed: {doc_name}",
+					message=frappe.get_traceback()
+				)
 				
