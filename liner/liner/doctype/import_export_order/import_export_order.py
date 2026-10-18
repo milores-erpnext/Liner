@@ -2343,16 +2343,6 @@ def send_arrival_notification(import_export_order):
 	)
 	team_emails = list({e for e in team_emails})
 
-	# attachments = [
-	# 	frappe.attach_print(
-	# 		doctype="Import-Export Order",
-	# 		name=order.name,
-	# 		print_format="Cargo Arrival Notice",
-	# 		file_name=f"Arrival Notice - {order.name}",
-	# 		print_letterhead=True,
-	# 		letterhead="Company Letterhead - icss"
-	# 	)
-	# ]
 	attachments = []
 
 	print_format = "Cargo Arrival Notice"
@@ -3380,3 +3370,29 @@ def create_export_stock_entries(import_export_order, warehouse, containers):
 	frappe.db.commit()
 
 	return created_entries
+
+def send_pending_arrival_notifications():
+    docs = frappe.get_all(
+        "Import-Export Order",
+        filters={"docstatus": 1},
+        pluck="name"
+    )
+
+    for doc_name in docs:
+        payment_entry_exists = frappe.db.exists(
+            "Payment Entry",
+            {
+                "custom_reference_importexport": doc_name,
+                "docstatus": ["!=", 2],
+            }
+        )
+
+        if not payment_entry_exists:
+            try:
+                send_arrival_notification(doc_name)
+            except Exception:
+                frappe.log_error(
+                    title=f"Arrival Notice Failed: {doc_name}",
+                    message=frappe.get_traceback()
+                )
+				

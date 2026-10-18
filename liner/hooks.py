@@ -185,8 +185,13 @@ doc_events = {
 
 scheduler_events = {
     "daily": [
-        "aerofreight.aerofreight.doctype.import_order.import_order.sync_all_tracking_statuses"
-    ]
+        "liner.liner.doctype.import_export_order.import_export_order.sync_all_tracking_statuses"
+    ],
+    "cron": {
+        "0 9,13,17 * * *": [
+            "liner.liner.doctype.import_export_order.import_export_order.send_pending_arrival_notifications"
+        ]
+    }
 }
 
 # Testing
