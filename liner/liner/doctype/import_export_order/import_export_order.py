@@ -2319,7 +2319,6 @@ def print_gate_pass(docname):
 
 @frappe.whitelist()
 def send_arrival_notification(import_export_order):
-	print(f"\n\nimport_export_order={import_export_order}\n\n")
 	order = frappe.get_doc("Import-Export Order", import_export_order)
 
 	# Consignee email (as in your original logic)
@@ -2332,7 +2331,7 @@ def send_arrival_notification(import_export_order):
 		},
 		"email",
 	)
-	print(f"\n\nexecutive_email={executive_email}\n\n")
+
 	if not executive_email:
 		frappe.throw("No email address found for Consignee.")
 
@@ -2350,15 +2349,12 @@ def send_arrival_notification(import_export_order):
 	letterhead = "Company Letterhead - ICSS"
 
 	if not frappe.db.exists("Letter Head", letterhead):
-		print(f"\n\nletterhead={letterhead}\n\n")
 		frappe.msgprint(f"Letterhead '{letterhead}' not found.")
 
 	elif not frappe.db.exists("Print Format", print_format):
-		print(f"\n\nprint_format={print_format}\n\n")
 		frappe.msgprint(f"Print Format '{print_format}' not found.")
 
 	else:
-		print(f"\n\nEnter send={order.name}\n{print_format}\n{letterhead}")
 		attachments.append(
 			frappe.attach_print(
 				doctype="Import-Export Order",
@@ -2370,7 +2366,6 @@ def send_arrival_notification(import_export_order):
 			)
 		)
 
-	print(f"\n\nfrappe send={order.name}\n{executive_email}\n{letterhead}")
 	frappe.sendmail(
 		recipients=[executive_email],
 		cc=team_emails,
@@ -3382,7 +3377,7 @@ def send_pending_arrival_notifications():
 		filters={"docstatus": 1},
 		pluck="name"
 	)
-	print(f"\n\ndocs={docs}\n\n")
+	
 	for doc_name in docs:
 		payment_entry_exists = frappe.db.exists(
 			"Payment Entry",
@@ -3391,7 +3386,7 @@ def send_pending_arrival_notifications():
 				"docstatus": ["!=", 2],
 			}
 		)
-		print(f"\n\npayment_entry_exists={payment_entry_exists}\n\n")
+		
 		executive_email = frappe.db.get_value(
 			"Party Table",
 			{
@@ -3402,7 +3397,6 @@ def send_pending_arrival_notifications():
 			"email",
 		)
 		if not payment_entry_exists and executive_email:
-			print(f"\n\nEnter={doc_name}\n\n")
 			try:
 				send_arrival_notification(doc_name)
 			except Exception:
