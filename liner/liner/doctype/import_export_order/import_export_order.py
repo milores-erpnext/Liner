@@ -2319,6 +2319,7 @@ def print_gate_pass(docname):
 
 @frappe.whitelist()
 def send_arrival_notification(import_export_order):
+	print(f"\n\nimport_export_order={import_export_order}\n\n")
 	order = frappe.get_doc("Import-Export Order", import_export_order)
 
 	# Consignee email (as in your original logic)
@@ -2331,7 +2332,7 @@ def send_arrival_notification(import_export_order):
 		},
 		"email",
 	)
-
+	
 	if not executive_email:
 		frappe.throw("No email address found for Consignee.")
 
@@ -3387,8 +3388,17 @@ def send_pending_arrival_notifications():
 			}
 		)
 		print(f"\n\npayment_entry_exists={payment_entry_exists}\n\n")
-		if not payment_entry_exists:
-			print("\n\nEnter\n\n")
+		executive_email = frappe.db.get_value(
+			"Party Table",
+			{
+				"party": "Consignee",
+				"parent": doc_name,
+				"parenttype": "Import-Export Order",
+			},
+			"email",
+		)
+		if not payment_entry_exists and executive_email:
+			print(f"\n\nEnter={doc_name}\n\n")
 			try:
 				send_arrival_notification(doc_name)
 			except Exception:
