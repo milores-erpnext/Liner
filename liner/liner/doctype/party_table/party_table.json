@@ -19,7 +19,7 @@
    "fieldname": "party",
    "fieldtype": "Select",
    "label": "Party",
-   "options": "\nShipper\nConsignee\nNotify1\nNotify1 Add"
+   "options": "\nShipper\nConsignee\nNotify1\nNotify2\nManifest Consignee"
   },
   {
    "fieldname": "name1",
@@ -51,7 +51,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-07 23:25:47.332753",
+ "modified": "2026-10-21 16:36:59.741504",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Party Table",

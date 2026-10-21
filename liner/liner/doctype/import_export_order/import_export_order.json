@@ -345,8 +345,9 @@
   },
   {
    "fieldname": "origin",
-   "fieldtype": "Data",
-   "label": "Origin"
+   "fieldtype": "Link",
+   "label": "Origin",
+   "options": "Country"
   },
   {
    "fieldname": "hs_code",
@@ -389,8 +390,9 @@
   },
   {
    "fieldname": "packing_type",
-   "fieldtype": "Data",
-   "label": "Packing Type"
+   "fieldtype": "Link",
+   "label": "Packing Type",
+   "options": "UOM"
   },
   {
    "fieldname": "no_of_packs",
@@ -750,7 +752,7 @@
    "link_fieldname": "custom_reference_importexport"
   }
  ],
- "modified": "2026-10-15 16:37:16.407145",
+ "modified": "2026-10-21 16:38:56.361760",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Import-Export Order",

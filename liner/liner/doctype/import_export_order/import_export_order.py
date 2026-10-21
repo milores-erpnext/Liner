@@ -1630,15 +1630,32 @@ def get_manifest_xml(import_export_order):
 
 	# No vessel/IMO/transport number field currently exists.
 	# Keep blank instead of incorrectly using voyage or booking number.
+	vessel = frappe.db.get_value(
+		"Vessel",
+		doc.vessel_code,
+		["imo_no", "vessel_flag_nationality"],
+		as_dict=True
+	) or {}
+
+	if not vessel.get("imo_no"):
+		frappe.throw(
+			f"Please add IMO Number in Vessel Master for Vessel: {doc.vessel}"
+		)
+
+	if not vessel.get("vessel_flag_nationality"):
+		frappe.throw(
+			f"Please add Vessel Flag Nationality in Vessel Master for Vessel: {doc.vessel}"
+		)
+
 	xml += add_element(
 		"MeansofTransportNumber",
-		doc.vessel_code,
+		vessel.get("imo_no"),
 		6
 	)
 
 	xml += add_element(
 		"MeansofTransportName",
-		doc.vessel,
+		vessel.get("vessel_flag_nationality"),
 		6
 	)
 

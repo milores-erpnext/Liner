@@ -41,7 +41,8 @@
   {
    "fieldname": "vessel_flag_nationality",
    "fieldtype": "Data",
-   "label": "Vessel Flag -Nationality"
+   "label": "Vessel Flag -Nationality",
+   "options": "Country"
   },
   {
    "fieldname": "call_sign",
@@ -126,7 +127,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 09:12:25.810187",
+ "modified": "2026-10-21 17:08:49.778288",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Vessel",
