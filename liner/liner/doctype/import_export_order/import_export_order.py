@@ -2354,12 +2354,14 @@ def get_local_freight_charges(import_export_order):
 @frappe.whitelist()
 def print_gate_pass(docname):
 
-	doc = frappe.get_doc("Import-Export Order", docname)
+	doc = frappe.get_doc("Container Delivery Order", {"ido_number":docname})
+	if not doc:
+		frappe.throw("Container Release Order is not available.")
 
 	html = frappe.get_print(
-		doctype="Import-Export Order",
+		doctype="Container Delivery Order",
 		name=doc.name,
-		print_format="Gate Pass",
+		print_format="Container Release Order",
 		letterhead="Company Letterhead - ICSS"
 	)
 
@@ -3469,22 +3471,23 @@ def set_project(doc):
 	)
 	
 	# Reuse the Project if it already exists
-	if frappe.db.exists("Project", {"project_name":project_name}):
-		doc.project = project_name
+	existing = frappe.db.get_value(
+		"Project", {"project_name": project_name}, "name"
+	)
+	if existing:
+		doc.project = existing      
 		return
-
-	if not frappe.db.exists("Project", {"project_name":project_name}):
-		# Create the Project only when it does not exist
-		project = frappe.get_doc({
-			"doctype": "Project",
-			"project_name": project_name,
-			"status": "Open",
-			"company": doc.company
-		})
-
-		project.insert(ignore_permissions=True)
-
-		doc.project = project.project_name
+		
+	# Create the Project only when it does not exist
+	project = frappe.get_doc({
+		"doctype": "Project",
+		"project_name": project_name,
+		"status": "Open",
+		"company": doc.company
+	})
+	
+	project.insert(ignore_permissions=True)
+	doc.project = project.name 
 
 @frappe.whitelist()
 def download_manifests_by_project(project):
