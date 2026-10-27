@@ -50,19 +50,17 @@
    "label": "Line Name"
   },
   {
-   "depends_on": "eval:doc.type === 'Yard Management'",
    "fieldname": "item",
    "fieldtype": "Link",
    "label": "Item",
-   "mandatory_depends_on": "eval:doc.type === 'Yard Management'",
-   "options": "Item"
+   "options": "Item",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_ixwj",
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval:doc.type === 'Yard Management'",
    "fetch_from": "item.item_name",
    "fieldname": "item_name",
    "fieldtype": "Data",
@@ -92,7 +90,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-12 12:47:47.199128",
+ "modified": "2026-10-25 22:49:50.042718",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Detention Slab",

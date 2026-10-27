@@ -10,13 +10,17 @@
   "company",
   "customer",
   "line",
+  "line_name",
   "vessal_name",
   "voyage_no",
+  "qatar_id",
   "column_break_tcig",
   "posting_date",
+  "expired_date",
   "location",
   "ido_number",
-  "expired_date",
+  "consignee_name",
+  "collected_by",
   "section_break_oyep",
   "container_details"
  ],
@@ -32,8 +36,9 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "Today",
    "fieldname": "posting_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Posting Date"
   },
   {
@@ -84,12 +89,34 @@
    "fieldname": "expired_date",
    "fieldtype": "Date",
    "label": "Expired Date"
+  },
+  {
+   "fieldname": "consignee_name",
+   "fieldtype": "Data",
+   "label": "Consignee Name"
+  },
+  {
+   "fieldname": "collected_by",
+   "fieldtype": "Data",
+   "label": "Collected By"
+  },
+  {
+   "fieldname": "qatar_id",
+   "fieldtype": "Data",
+   "label": "Qatar ID"
+  },
+  {
+   "fetch_from": "line.supplier_name",
+   "fieldname": "line_name",
+   "fieldtype": "Data",
+   "label": "Line Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-14 15:24:45.092026",
+ "modified": "2026-10-26 17:13:06.157023",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Container Delivery Order",

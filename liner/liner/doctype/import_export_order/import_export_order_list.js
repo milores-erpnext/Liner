@@ -34,6 +34,10 @@ frappe.listview_settings["Import-Export Order"] = {
         listview.page.add_inner_button(__("Attach XML"), () => {
             open_xml_upload_dialog(listview);
         });
+
+        listview.page.add_inner_button(__("Download Manifests"), () => {
+            open_bulk_manifest_dialog(listview);
+        });
     },
 };
 
@@ -41,6 +45,13 @@ function open_xml_upload_dialog(listview) {
     const dialog = new frappe.ui.Dialog({
         title: __("Attach XML"),
         fields: [
+            {
+                fieldname: "company",
+                label: __("Company"),
+                fieldtype: "Link",
+                options: "Company",
+                reqd: 1,
+            },
             {
                 fieldname: "order_type",
                 label: __("Order Type"),
@@ -67,7 +78,7 @@ function open_xml_upload_dialog(listview) {
             reader.onload = function (e) {
                 frappe.call({
                     method: "liner.liner.doctype.import_export_order.import_export_order.import_xml_bulk",
-                    args: { xml_text: e.target.result, order_type: dialog.get_value("order_type") },
+                    args: { xml_text: e.target.result, order_type: dialog.get_value("order_type"), company: dialog.get_value("company") },
                     freeze: true,
                     freeze_message: __("Importing bookings..."),
                     callback(r) {
@@ -99,6 +110,59 @@ function open_xml_upload_dialog(listview) {
             };
             reader.onerror = () => frappe.msgprint(__("Could not read the XML file."));
             reader.readAsText(file);
+        },
+    });
+
+    dialog.show();
+}
+
+function open_bulk_manifest_dialog(listview) {
+    const dialog = new frappe.ui.Dialog({
+        title: __("Download Manifests"),
+        fields: [
+            {
+                fieldname: "company",
+                label: __("Company"),
+                fieldtype: "Link",
+                options: "Company",
+                reqd: 1,
+            },
+            {
+                fieldname: "project",
+                label: __("Job"),
+                fieldtype: "Link",
+                options: "Project",
+                reqd: 1,
+                get_query() {
+                    const company = dialog.get_value("company");
+
+                    return {
+                        filters: {
+                            company: company,
+                        },
+                    };
+                },
+            }    
+        ],
+        primary_action_label: __("Download"),
+        primary_action(values) {
+            if (!values.project) {
+                frappe.msgprint(__("Please select a Project."));
+                return;
+            }
+
+            // POST download: server responds with the ZIP file
+            open_url_post(
+                "/api/method/liner.liner.doctype.import_export_order.import_export_order.download_manifests_by_project",
+                { project: values.project }
+            );
+
+            dialog.hide();
+
+            // frappe.show_alert({
+            //     message: __("Preparing manifests for {0}...", [values.project]),
+            //     indicator: "green",
+            // });
         },
     });
 

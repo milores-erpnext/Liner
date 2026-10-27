@@ -9,7 +9,7 @@
   {
    "child": 0,
    "collapsible": 1,
-   "icon": "",
+   "icon": "import",
    "indent": 0,
    "keep_closed": 0,
    "label": "Import-Export Order",
@@ -21,7 +21,7 @@
   {
    "child": 0,
    "collapsible": 1,
-   "icon": "",
+   "icon": "money-coins-1",
    "indent": 0,
    "keep_closed": 0,
    "label": "Tariff Charges",
@@ -33,7 +33,7 @@
   {
    "child": 0,
    "collapsible": 1,
-   "icon": "",
+   "icon": "layers",
    "indent": 0,
    "keep_closed": 0,
    "label": "Detention Slab",
@@ -41,9 +41,68 @@
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "container",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Container Delivery Order",
+   "link_to": "Container Delivery Order",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "ship-wheel",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Vessel",
+   "link_to": "Vessel",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "ship",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Port",
+   "link_to": "Sea Ports",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Item",
+   "link_to": "Item",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Payment Entry",
+   "link_to": "Payment Entry",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-10-15 21:26:20.842698",
+ "modified": "2026-10-27 10:05:20.443372",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Liner",

@@ -12,7 +12,7 @@ from datetime import datetime
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import today
 import json
-from frappe.utils import flt, cint, getdate, formatdate
+from frappe.utils import flt, cint, getdate, formatdate, nowdate
 from frappe import _
 from xml.sax.saxutils import escape, quoteattr
 
@@ -20,12 +20,45 @@ from xml.sax.saxutils import escape, quoteattr
 class ImportExportOrder(Document):
 	def validate(doc, method=None):
 		calculate_other_charges(doc)
+		set_project(doc)
 
 	def on_update(self):
 		self.sync_container_items()
 		self.fetch_container_tracking()
 		self.fetch_bl_status()
+		self.sync_status_to_stock_entries()
 
+	def sync_status_to_stock_entries(self):
+		"""
+		Whenever the order's status changes, copy it to
+		custom_liner_status on every linked Stock Entry.
+		"""
+		if not self.status:
+			return
+
+		# Only run when status actually changed (or on first save with a status)
+		if not self.is_new():
+			before = self.get_doc_before_save()
+			if before and before.status == self.status:
+				return
+
+		stock_entries = frappe.get_all(
+			"Stock Entry",
+			filters={
+				"custom_importexport_order": self.name,
+				"docstatus": ["!=", 2],   # skip cancelled
+			},
+			pluck="name",
+		)
+
+		for se_name in stock_entries:
+			frappe.db.set_value(
+				"Stock Entry",
+				se_name,
+				"custom_liner_status",
+				self.status,
+				update_modified=False,
+			)
 	def sync_container_items(self):
 		"""
 		For every row in the Equipment Table2 child table (table_tvep),
@@ -181,7 +214,7 @@ def import_xml(xml_text):
 
 
 @frappe.whitelist()
-def import_xml_bulk(xml_text,order_type):
+def import_xml_bulk(xml_text,order_type,company):
 	"""
 	Parses every <Booking> under the <Vessel> root and creates one
 	Import-Export Order per booking. TASBookingno (-> line_booking_ref) is
@@ -207,17 +240,17 @@ def import_xml_bulk(xml_text,order_type):
 			values.setdefault("status", "Draft")
 			doc = frappe.get_doc({"doctype": "Import-Export Order", **values})
 			doc.order_type = order_type
-			doc.company = None  # will be filled in manually after import
+			doc.company = company  # will be filled in manually after import
 			# ignore_mandatory: company/customer etc. aren't in the XML and
 			# will be filled in manually after import
 			doc.insert(ignore_permissions=True, ignore_mandatory=True)
-			frappe.db.set_value(
-				"Import-Export Order",
-				doc.name,
-				"company",
-				None,
-				update_modified=False
-			)
+			# frappe.db.set_value(
+			# 	"Import-Export Order",
+			# 	doc.name,
+			# 	"company",
+			# 	None,
+			# 	update_modified=False
+			# )
 
 			doc.reload()
 			created.append({"name": doc.name, "line_booking_ref": tas_booking_no})
@@ -464,7 +497,7 @@ def format_date(value):
 	return None
 	
 @frappe.whitelist()
-def create_freight_charges_sales_invoice(import_export_order):
+def create_freight_charges_sales_order(import_export_order):
 
 	# Get Import-Export Order
 	order = frappe.get_doc("Import-Export Order", import_export_order)
@@ -476,8 +509,8 @@ def create_freight_charges_sales_invoice(import_export_order):
 	if not order.company:
 		frappe.throw("Company is missing in Import-Export Order.")
 
-	# if not order.project:
-	# 	frappe.throw("Project is missing in Import-Export Order.")
+	if not order.project:
+		frappe.throw("Project is missing in Import-Export Order.")
 
 	if not order.grand_total:
 		frappe.throw("Grand Total is missing or zero.")
@@ -489,12 +522,13 @@ def create_freight_charges_sales_invoice(import_export_order):
 		)
 
 	# Create Sales Invoice
-	sales_invoice = frappe.new_doc("Sales Invoice")
+	sales_order = frappe.new_doc("Sales Order")
 
-	sales_invoice.customer = order.customer
-	sales_invoice.company = order.company
-	sales_invoice.project = order.project
-	sales_invoice.custom_ref_importexport = import_export_order
+	sales_order.customer = order.customer
+	sales_order.company = order.company
+	sales_order.project = order.project
+	sales_order.custom_importexport_order = import_export_order
+	sales_order.delivery_date = today()
 
 	items_added = 0
 
@@ -516,7 +550,9 @@ def create_freight_charges_sales_invoice(import_export_order):
 
 		# Skip if quantity is zero
 		if qty <= 0:
-			continue
+			frappe.throw(
+				f"No matching Container Type <b>{row.eq_type}</b> found in Container Type Table."
+			)
 
 		# Rate from Contract Agreement
 		rate = flt(row.rate)
@@ -525,7 +561,7 @@ def create_freight_charges_sales_invoice(import_export_order):
 			continue
 
 		# Add item to Sales Invoice
-		sales_invoice.append("items", {
+		sales_order.append("items", {
 			"item_code": row.item_code,
 			"qty": qty,
 			"rate": rate,
@@ -540,29 +576,29 @@ def create_freight_charges_sales_invoice(import_export_order):
 		)
 
 	# Set defaults and calculate totals
-	sales_invoice.calculate_taxes_and_totals()
+	sales_order.calculate_taxes_and_totals()
 
 	# Insert as Draft
-	sales_invoice.insert()
+	sales_order.insert(ignore_mandatory=1)
 
 	return {
-		"name": sales_invoice.name,
-		"doctype": "Sales Invoice",
-		"customer": sales_invoice.customer,
-		"company": sales_invoice.company,
-		"project": sales_invoice.project,
+		"name": sales_order.name,
+		"doctype": "Sales Order",
+		"customer": sales_order.customer,
+		"company": sales_order.company,
+		"project": sales_order.project,
 		"items": [
 			{
 				"item_code": item.item_code,
 				"qty": item.qty,
 				"rate": item.rate
 			}
-			for item in sales_invoice.items
+			for item in sales_order.items
 		]
 	}
 
 @frappe.whitelist()
-def create_liner_charges_purchase_invoice(import_export_order):
+def create_liner_charges_purchase_order(import_export_order):
 
 	# Get Import-Export Order
 	order = frappe.get_doc("Import-Export Order", import_export_order)
@@ -587,12 +623,13 @@ def create_liner_charges_purchase_invoice(import_export_order):
 		)
 
 	# Create Purchase Invoice
-	purchase_invoice = frappe.new_doc("Purchase Invoice")
+	purchase_order = frappe.new_doc("Purchase Order")
 
-	purchase_invoice.supplier = order.line
-	purchase_invoice.company = order.company
-	purchase_invoice.project = order.project
-	purchase_invoice.custom_ref_importexport = import_export_order
+	purchase_order.supplier = order.line
+	purchase_order.company = order.company
+	purchase_order.project = order.project
+	purchase_order.custom_importexport_order = import_export_order
+	purchase_order.schedule_date= today()
 
 	items_added = 0
 
@@ -627,7 +664,7 @@ def create_liner_charges_purchase_invoice(import_export_order):
 			continue
 
 		# Add item to Purchase Invoice
-		purchase_invoice.append("items", {
+		purchase_order.append("items", {
 			"item_code": row.item_code,
 			"qty": qty,
 			"rate": rate,
@@ -642,24 +679,24 @@ def create_liner_charges_purchase_invoice(import_export_order):
 		)
 
 	# Set defaults and calculate totals
-	purchase_invoice.calculate_taxes_and_totals()
+	purchase_order.calculate_taxes_and_totals()
 
 	# Insert as Draft
-	purchase_invoice.insert()
+	purchase_order.insert(ignore_mandatory=1)
 
 	return {
-		"name": purchase_invoice.name,
-		"doctype": "Purchase Invoice",
-		"supplier": purchase_invoice.supplier,
-		"company": purchase_invoice.company,
-		"project": purchase_invoice.project,
+		"name": purchase_order.name,
+		"doctype": "Purchase Order",
+		"supplier": purchase_order.supplier,
+		"company": purchase_order.company,
+		"project": purchase_order.project,
 		"items": [
 			{
 				"item_code": item.item_code,
 				"qty": item.qty,
 				"rate": item.rate
 			}
-			for item in purchase_invoice.items
+			for item in purchase_order.items
 		]
 	}
 
@@ -951,7 +988,7 @@ def make_payment_entry(source_name, target_doc=None):
 	# return html
 
 @frappe.whitelist()
-def create_detention_sales_invoice(import_export_order, equipment_row_name):
+def create_detention_sales_order(import_export_order, equipment_row_name):
 	"""
 	Create Sales Invoice for detention charges from Equipment Table2.
 	"""
@@ -1000,7 +1037,7 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 		},
 		fields=[
 			"name",
-			# "item",
+			"item",
 			"item_name",
 			"currency"
 		],
@@ -1020,39 +1057,30 @@ def create_detention_sales_invoice(import_export_order, equipment_row_name):
 	# 	)
 
 	# Create Sales Invoice
-	sales_invoice = frappe.new_doc("Sales Invoice")
+	sales_order = frappe.new_doc("Sales Order")
 
-	sales_invoice.customer = order.customer
-	sales_invoice.company = order.company
-	sales_invoice.project = order.project
-	sales_invoice.custom_ref_importexport = import_export_order
+	sales_order.customer = order.customer
+	sales_order.company = order.company
+	sales_order.project = order.project
+	sales_order.custom_importexport_order = import_export_order
+	sales_order.delivery_date=today()
 
 	# Add item
-	sales_invoice.append("items", {
-		"item_code": equipment_row.container_no,
+	sales_order.append("items", {
+		"item_code": frappe.db.get_value('Detention Slab',equipment_row.detention_slab,'item'),
 		"qty": 1,
 		"rate": dt_charges,
 		"project": order.project
 	})
 
-	# Optional reference
-	# Only set these if the fields exist in your Sales Invoice.
-	if frappe.get_meta("Sales Invoice").has_field("custom_import_export_order"):
-		sales_invoice.custom_import_export_order = order.name
-
-	if frappe.get_meta("Sales Invoice Item").has_field("custom_container_no"):
-		sales_invoice.items[0].custom_container_no = (
-			equipment_row.container_no
-		)
-
-	sales_invoice.insert()
+	sales_order.insert(ignore_mandatory=1)
 
 	return {
-		"name": sales_invoice.name,
-		"doctype": "Sales Invoice",
-		"customer": sales_invoice.customer,
-		"company": sales_invoice.company,
-		"project": sales_invoice.project,
+		"name": sales_order.name,
+		"doctype": "Sales Order",
+		"customer": sales_order.customer,
+		"company": sales_order.company,
+		"project": sales_order.project,
 		"item": equipment_row.container_no,
 		"qty": 1,
 		"rate": dt_charges
@@ -2287,6 +2315,9 @@ def get_local_freight_charges(import_export_order):
 			"nos"
 		) or 0
 
+		if qty == 0:
+			frappe.throw(f"Container Type not found in Tariff Charges Master.")
+
 		equipment_row = frappe.db.get_value( "Equipment Table1", { "type": row.eq_type, "parent": import_export_order }, ["name", "nos"], as_dict=True ) 
 		
 		if not equipment_row: 
@@ -3422,3 +3453,103 @@ def send_pending_arrival_notifications():
 					message=frappe.get_traceback()
 				)
 				
+def set_project(doc):
+	if doc.project:
+		return
+
+	if not doc.vessel_code or not doc.voyage_no:
+		return
+
+	current_date = getdate(nowdate()).strftime("%d-%m-%Y")
+
+	project_name = (
+		f"{doc.vessel_code.strip()}-"
+		f"{doc.voyage_no.strip()}-"
+		f"{current_date}"
+	)
+	
+	# Reuse the Project if it already exists
+	if frappe.db.exists("Project", {"project_name":project_name}):
+		doc.project = project_name
+		return
+
+	if not frappe.db.exists("Project", {"project_name":project_name}):
+		# Create the Project only when it does not exist
+		project = frappe.get_doc({
+			"doctype": "Project",
+			"project_name": project_name,
+			"status": "Open",
+			"company": doc.company
+		})
+
+		project.insert(ignore_permissions=True)
+
+		doc.project = project.project_name
+
+@frappe.whitelist()
+def download_manifests_by_project(project):
+	"""
+	Generate ONE Cargo Manifest XML for the given Project.
+	The file has a single <CargoManifest> / <MessageHeader> and one
+	<ManifestRecord> per Import-Export Order (same format as get_manifest_xml).
+	"""
+	if not project:
+		frappe.throw(_("Project is required."))
+	
+	proj = frappe.db.get_value('Project',project,'project_name')
+
+	orders = frappe.get_all(
+		"Import-Export Order",
+		filters={"project": proj, "docstatus": ["!=", 2]},
+		fields=["name", "bl_no"]
+	)
+	
+	if not orders:
+		frappe.throw(_("No Import-Export Orders found for Project {0}.").format(project))
+
+	start_tag = "  <ManifestRecord>"
+	end_tag = "</ManifestRecord>"
+
+	header = ""
+	records = []
+	errors = []
+
+	for row in orders:
+		try:
+			xml = get_manifest_xml(row.name)
+		except Exception as e:
+			# e.g. missing IMO number / flag nationality in Vessel master
+			errors.append(f"{row.name}: {frappe.as_unicode(e)}")
+			frappe.clear_messages()
+			continue
+
+		start = xml.find(start_tag)
+		end = xml.rfind(end_tag)
+
+		if start == -1 or end == -1:
+			errors.append(f"{row.name}: ManifestRecord not found in generated XML.")
+			continue
+
+		# Use the XML declaration + <CargoManifest> + <MessageHeader>
+		# of the first successful order for the whole file
+		if not header:
+			header = xml[:start]
+
+		records.append(xml[start:end + len(end_tag)])
+
+	# A customs manifest with missing orders is risky, so do not
+	# download a partial file silently
+	if errors:
+		frappe.throw(
+			_("Manifest could not be generated for the following order(s):<br><br>{0}").format(
+				"<br>".join(errors)
+			)
+		)
+
+	combined = header + "\n".join(records) + "\n</CargoManifest>"
+
+	safe_project = re.sub(r'[\\/:*?"<>|]', "_", project)
+
+	frappe.response["filename"] = f"Manifest - {safe_project}.xml"
+	frappe.response["filecontent"] = combined.encode("utf-8")
+	frappe.response["type"] = "binary"

@@ -9,6 +9,7 @@
  "field_order": [
   "item_code",
   "item_name",
+  "description",
   "qty",
   "rate",
   "amount"
@@ -47,13 +48,21 @@
    "in_list_view": 1,
    "label": "Amount",
    "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fetch_from": "item_code.description",
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "in_list_view": 1,
+   "label": "Description"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-26 01:29:50.246148",
+ "modified": "2026-10-25 22:18:32.825952",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Other Charges Table",

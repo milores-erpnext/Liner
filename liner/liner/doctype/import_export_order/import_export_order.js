@@ -14,10 +14,11 @@ frappe.ui.form.on("Import-Export Order", {
 	refresh(frm) {
 		frm.add_custom_button(__("Manifest Download"), () => download_manifest_xml(frm));
 		frm.add_custom_button(__("Arrival Notice"), () => {
-			make_arrival_notice(frm);
+			// make_arrival_notice(frm);
+			preview_arrival_notice(frm);
 		});
 		frm.add_custom_button(__("EDI Connect with CTC"));
-		frm.add_custom_button(__("Payment Entry"), () => make_payment_entry(frm),__("Create"));
+		// frm.add_custom_button(__("Payment Entry"), () => make_payment_entry(frm),__("Create"));
 		frm.add_custom_button(__("Arrival Order"), function () {
 			show_arrival_order_dialog(frm);
 		}, __("Create"));
@@ -122,18 +123,18 @@ frappe.ui.form.on("Import-Export Order", {
 		}
 
 		frappe.confirm(
-			`Create Sales Invoice for freight charges`,
+			`Create Proforma charges`,
 			function() {
 
 				frappe.call({
-					method: "liner.liner.doctype.import_export_order.import_export_order.create_freight_charges_sales_invoice",
+					method: "liner.liner.doctype.import_export_order.import_export_order.create_freight_charges_sales_order",
 
 					args: {
 						import_export_order: frm.doc.name
 					},
 
 					freeze: true,
-					freeze_message: "Creating Sales Invoice...",
+					freeze_message: "Creating Proforma Invoice...",
 
 					callback: function(r) {
 
@@ -143,13 +144,13 @@ frappe.ui.form.on("Import-Export Order", {
 
 						frappe.show_alert({
 							message:
-								`Sales Invoice ${r.message.name} created successfully.`,
+								`Proforma Invoice ${r.message.name} created successfully.`,
 							indicator: "green"
 						});
 
 						frappe.set_route(
 							"Form",
-							"Sales Invoice",
+							"Sales Order",
 							r.message.name
 						);
 					}
@@ -198,18 +199,18 @@ frappe.ui.form.on("Import-Export Order", {
 		}
 
 		frappe.confirm(
-			`Create Purchase Invoice for Liner charges`,
+			`Create Liner charges`,
 			function() {
 
 				frappe.call({
-					method: "liner.liner.doctype.import_export_order.import_export_order.create_liner_charges_purchase_invoice",
+					method: "liner.liner.doctype.import_export_order.import_export_order.create_liner_charges_purchase_order",
 
 					args: {
 						import_export_order: frm.doc.name
 					},
 
 					freeze: true,
-					freeze_message: "Creating Purchase Invoice...",
+					freeze_message: "Creating Liner Charges...",
 
 					callback: function(r) {
 
@@ -219,13 +220,13 @@ frappe.ui.form.on("Import-Export Order", {
 
 						frappe.show_alert({
 							message:
-								`Purchase Invoice ${r.message.name} created successfully.`,
+								`Purchase Order ${r.message.name} created successfully.`,
 							indicator: "green"
 						});
 
 						frappe.set_route(
 							"Form",
-							"Purchase Invoice",
+							"Purchase Order",
 							r.message.name
 						);
 					}
@@ -417,21 +418,62 @@ function make_payment_entry(frm) {
 	});
 }
 
-async function make_arrival_notice(frm) {
-	await frappe.call({
-		method:
-			"liner.liner.doctype.import_export_order.import_export_order.send_arrival_notification",
+function preview_arrival_notice(frm) {
+    const print_format = "Cargo Arrival Notice";
 
-		args: {
-			import_export_order: frm.doc.name
-		}
-	});
+    const url = `/printview?doctype=${encodeURIComponent(frm.doctype)}`
+        + `&name=${encodeURIComponent(frm.doc.name)}`
+        + `&format=${encodeURIComponent(print_format)}`
+        + `&no_letterhead=0`
+        + `&_lang=${frappe.boot.lang}`;
 
-	frappe.show_alert({
-		message: __("Arrival notification sent to Consignee & Teams."),
-		indicator: "green"
-	});
+    const print_window = window.open(url, "_blank");
+
+    if (!print_window) {
+        frappe.msgprint(__("Please allow pop-ups to preview the Arrival Notice."));
+        return;
+    }
+
+    frappe.confirm(
+        __("Have you reviewed the Arrival Notice preview? Do you want to send it to the Consignee and team?"),
+        () => {
+            send_arrival_notice(frm);
+        }
+    );
 }
+
+async function send_arrival_notice(frm) {
+    const response = await frappe.call({
+        method: "liner.liner.doctype.import_export_order.import_export_order.send_arrival_notification",
+        args: {
+            import_export_order: frm.doc.name
+        },
+        freeze: true,
+        freeze_message: __("Sending Arrival Notice...")
+    });
+
+    if (response.message) {
+        frappe.show_alert({
+            message: __("Arrival Notice sent to Consignee and team."),
+            indicator: "green"
+        });
+    }
+}
+// async function make_arrival_notice(frm) {
+// 	await frappe.call({
+// 		method:
+// 			"liner.liner.doctype.import_export_order.import_export_order.send_arrival_notification",
+
+// 		args: {
+// 			import_export_order: frm.doc.name
+// 		}
+// 	});
+
+// 	frappe.show_alert({
+// 		message: __("Arrival notification sent to Consignee & Teams."),
+// 		indicator: "green"
+// 	});
+// }
  
 // function show_delivery_order_dialog(frm) {
 
@@ -1141,17 +1183,17 @@ frappe.ui.form.on("Equipment Table2", {
 		}
 
 		frappe.confirm(
-			`Create Sales Invoice for detention charges of <b>${row.container_no || ""}</b>?`,
+			`Create detention charges.`,
 			function() {
 
 				frappe.call({
-					method: "liner.liner.doctype.import_export_order.import_export_order.create_detention_sales_invoice",
+					method: "liner.liner.doctype.import_export_order.import_export_order.create_detention_sales_order",
 					args: {
 						import_export_order: frm.doc.name,
 						equipment_row_name: row.name
 					},
 					freeze: true,
-					freeze_message: "Creating Detention Sales Invoice...",
+					freeze_message: "Creating Detention Charges...",
 					callback: function(r) {
 
 						if (!r.message) {
@@ -1160,14 +1202,14 @@ frappe.ui.form.on("Equipment Table2", {
 
 						frappe.show_alert({
 							message:
-								`Sales Invoice ${r.message.name} created successfully.`,
+								`Sales Order ${r.message.name} created successfully.`,
 							indicator: "green"
 						});
 
 						// Open Sales Invoice
 						frappe.set_route(
 							"Form",
-							"Sales Invoice",
+							"Sales Order",
 							r.message.name
 						);
 					}
@@ -1262,10 +1304,24 @@ function calculate_detention_charges(frm, cdt, cdn) {
 			return null;
 		}
 
+		// return frappe.db.get_doc(
+		// 	"Detention Slab",
+		// 	slabs[0].name
+		// );
 		return frappe.db.get_doc(
 			"Detention Slab",
 			slabs[0].name
-		);
+		).then(slab => {
+			// Set Detention Slab Link field in Equipment Table2
+			frappe.model.set_value(
+				cdt,
+				cdn,
+				"detention_slab",
+				slab.name
+			);
+
+			return slab;
+		});
 
 	}).then(slab => {
 
@@ -1425,6 +1481,7 @@ function calculate_detention_charges(frm, cdt, cdn) {
 			});
 		}
 	});
+	// frm.save();
 }
 
 function download_manifest_xml(frm) {

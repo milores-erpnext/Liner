@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_bulk_edit": 1,
+ "allow_events_in_timeline": 1,
  "allow_rename": 1,
  "autoname": "format:{YYYY}-{#####}",
  "creation": "2026-08-14 10:47:13.546862",
@@ -168,7 +169,8 @@
    "depends_on": "eval:doc.company",
    "fieldname": "project",
    "fieldtype": "Link",
-   "label": "Project",
+   "in_list_view": 1,
+   "label": "Job",
    "options": "Project"
   },
   {
@@ -539,8 +541,7 @@
    "fieldname": "contract_agreement",
    "fieldtype": "Table",
    "label": "Tariff Charges",
-   "options": "Contract Agreement Table",
-   "read_only": 1
+   "options": "Contract Agreement Table"
   },
   {
    "fieldname": "grand_total",
@@ -655,7 +656,7 @@
   {
    "fieldname": "create_freight_charges",
    "fieldtype": "Button",
-   "label": "Create Freight Charges"
+   "label": "Create Proforma Charges"
   },
   {
    "fieldname": "section_break_cggy",
@@ -750,9 +751,19 @@
    "group": "Reference",
    "link_doctype": "Payment Entry",
    "link_fieldname": "custom_reference_importexport"
+  },
+  {
+   "group": "Reference",
+   "link_doctype": "Sales Order",
+   "link_fieldname": "custom_importexport_order"
+  },
+  {
+   "group": "Reference",
+   "link_doctype": "Purchase Order",
+   "link_fieldname": "custom_importexport_order"
   }
  ],
- "modified": "2026-10-21 16:38:56.361760",
+ "modified": "2026-10-27 10:01:26.027303",
  "modified_by": "Administrator",
  "module": "Liner",
  "name": "Import-Export Order",
@@ -777,5 +788,6 @@
  "rows_threshold_for_grid_search": 20,
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }
