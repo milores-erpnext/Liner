@@ -271,7 +271,7 @@ frappe.ui.form.on("Import-Export Order", {
 		}
 
 		frappe.confirm(
-			`Create Sales Invoice for Other Charges`,
+			`Create Other Charges`,
 			function() {
 
 				frappe.call({
@@ -282,7 +282,7 @@ frappe.ui.form.on("Import-Export Order", {
 					},
 
 					freeze: true,
-					freeze_message: "Creating Sales Invoice...",
+					freeze_message: "Creating Proforma Invoice...",
 
 					callback: function(r) {
 
@@ -292,13 +292,13 @@ frappe.ui.form.on("Import-Export Order", {
 
 						frappe.show_alert({
 							message:
-								`Sales Invoice ${r.message.name} created successfully.`,
+								`Other Charges ${r.message.name} created successfully.`,
 							indicator: "green"
 						});
 
 						frappe.set_route(
 							"Form",
-							"Sales Invoice",
+							"Sales Order",
 							r.message.name
 						);
 					}

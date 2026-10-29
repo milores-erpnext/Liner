@@ -521,43 +521,70 @@ def create_freight_charges_sales_order(import_export_order):
 	if not order.grand_total:
 		frappe.throw("Grand Total is missing or zero.")
 
-	# Validate Contract Agreement table
 	if not order.contract_agreement:
+		frappe.throw("No Contract Agreement found in Import-Export Order.")
+
+	# Get existing Proforma Sales Orders for this Import-Export Order
+	existing_orders = frappe.get_all(
+		"Sales Order",
+		filters={
+			"docstatus": 1,
+			"custom_importexport_order": order.name,
+		},
+		pluck="name",
+	)
+
+	# Collect item codes already included in previous Sales Orders
+	existing_item_codes = set()
+
+	for order_name in existing_orders:
+		existing_sales_order = frappe.get_doc("Sales Order", order_name)
+
+		for item in existing_sales_order.items:
+			if item.item_code:
+				existing_item_codes.add(item.item_code)
+
+	# Select only Contract Agreement items not already created
+	remaining_items = [
+		row for row in order.contract_agreement
+		if row.item_code and row.item_code not in existing_item_codes
+	]
+
+	if not remaining_items:
 		frappe.throw(
-			"No Contract Agreement found in Import-Export Order."
+			"Proforma charges have already been created for all Tariff Charges."
 		)
 
-	# Create Sales Invoice
+	# Create Sales Order
 	sales_order = frappe.new_doc("Sales Order")
 
 	sales_order.customer = order.customer
 	sales_order.company = order.company
 	sales_order.project = order.project
-	sales_order.custom_importexport_order = import_export_order
+	sales_order.custom_importexport_order = order.name
 	sales_order.delivery_date = today()
 
 	items_added = 0
 
-	# Add all Contract Agreement items
-	for row in order.contract_agreement:
-		
-		# Skip rows without item code
-		if not row.item_code:
-			continue
+	# Add only remaining Contract Agreement items
+	for row in remaining_items:
 
 		# Get quantity from Equipment Table1 based on eq_type
 		qty = frappe.db.get_value(
 			"Equipment Table1",
-			{"type": row.eq_type, "parent": import_export_order},
-			"nos"
+			{
+				"type": row.eq_type,
+				"parent": order.name,
+			},
+			"nos",
 		) or 0
 
 		qty = flt(qty)
 
-		# Skip if quantity is zero
 		if qty <= 0:
 			frappe.throw(
-				f"No matching Container Type <b>{row.eq_type}</b> found in Container Type Table."
+				f"No matching Container Type <b>{row.eq_type}</b> "
+				"found in Container Type Table."
 			)
 
 		# Rate from Contract Agreement
@@ -566,7 +593,6 @@ def create_freight_charges_sales_order(import_export_order):
 		if rate <= 0:
 			continue
 
-		# Add item to Sales Invoice
 		sales_order.append("items", {
 			"item_code": row.item_code,
 			"qty": qty,
@@ -575,13 +601,10 @@ def create_freight_charges_sales_order(import_export_order):
 
 		items_added += 1
 
-	# Make sure at least one item was added
 	if not items_added:
-		frappe.throw(
-			"No valid items found in Tariff Charges table."
-		)
+		frappe.throw("No valid remaining items found in Tariff Charges table.")
 
-	# Set defaults and calculate totals
+	# Calculate totals
 	sales_order.calculate_taxes_and_totals()
 
 	# Insert as Draft
@@ -597,79 +620,89 @@ def create_freight_charges_sales_order(import_export_order):
 			{
 				"item_code": item.item_code,
 				"qty": item.qty,
-				"rate": item.rate
+				"rate": item.rate,
 			}
 			for item in sales_order.items
-		]
+		],
 	}
 
 @frappe.whitelist()
 def create_liner_charges_purchase_order(import_export_order):
-
-	# Get Import-Export Order
 	order = frappe.get_doc("Import-Export Order", import_export_order)
 
-	# Validate required fields
 	if not order.line:
-		frappe.throw("Line is missing in Import-Export Order.")
+		frappe.throw("Shipping Line is missing in Import-Export Order.")
 
 	if not order.company:
 		frappe.throw("Company is missing in Import-Export Order.")
 
-	# if not order.project:
-	# 	frappe.throw("Project is missing in Import-Export Order.")
+	if not order.project:
+		frappe.throw("Project is missing in Import-Export Order.")
 
-	if not order.total_liner:
-		frappe.throw("Total Liner is missing or zero.")
-
-	# Validate Contract Agreement table
 	if not order.contract_agreement:
+		frappe.throw("No Contract Agreement found in Import-Export Order.")
+
+	# Get existing Purchase Orders
+	existing_orders = frappe.get_all(
+		"Purchase Order",
+		filters={
+			"docstatus": 1,
+			"custom_importexport_order": order.name,
+		},
+		pluck="name",
+	)
+
+	existing_item_codes = set()
+
+	for po_name in existing_orders:
+		po = frappe.get_doc("Purchase Order", po_name)
+
+		for item in po.items:
+			if item.item_code:
+				existing_item_codes.add(item.item_code)
+
+	# Select only remaining items
+	remaining_items = [
+		row for row in order.contract_agreement
+		if row.item_code
+		and row.item_code not in existing_item_codes
+		and row.rate_type != "LUM"
+	]
+
+	if not remaining_items:
 		frappe.throw(
-			"No Contract Agreement found in Import-Export Order."
+			"Liner charges have already been created for all applicable items."
 		)
 
-	# Create Purchase Invoice
 	purchase_order = frappe.new_doc("Purchase Order")
-
 	purchase_order.supplier = order.line
 	purchase_order.company = order.company
 	purchase_order.project = order.project
-	purchase_order.custom_importexport_order = import_export_order
-	purchase_order.schedule_date= today()
+	purchase_order.schedule_date = today()
+
+	# Use the actual custom link field on Purchase Order
+	purchase_order.custom_importexport_order = order.name
 
 	items_added = 0
 
-	# Add all Contract Agreement items
-	for row in order.contract_agreement:
-		
-		# Skip rows without item code
-		if not row.item_code:
-			continue
-
-		# Skip LUM rate type
-		if row.rate_type == "LUM":
-			continue
-
-		# Get quantity from Equipment Table1 based on eq_type
-		qty = frappe.db.get_value(
+	for row in remaining_items:
+		qty = flt(frappe.db.get_value(
 			"Equipment Table1",
-			{"type": row.eq_type, "parent": import_export_order},
-			"nos"
-		) or 0
+			{"type": row.eq_type, "parent": order.name},
+			"nos",
+		) or 0)
 
-		qty = flt(qty)
-
-		# Skip if quantity is zero
 		if qty <= 0:
-			continue
+			frappe.throw(
+				f"No matching Container Type <b>{row.eq_type}</b> "
+				"found in Container Type Table."
+			)
 
-		# Rate from Contract Agreement
 		rate = flt(row.cost_price)
 
 		if rate <= 0:
 			continue
 
-		# Add item to Purchase Invoice
 		purchase_order.append("items", {
 			"item_code": row.item_code,
 			"qty": qty,
@@ -678,32 +711,14 @@ def create_liner_charges_purchase_order(import_export_order):
 
 		items_added += 1
 
-	# Make sure at least one item was added
 	if not items_added:
-		frappe.throw(
-			"No valid items found in Tariff Charges table."
-		)
+		frappe.throw("No valid remaining liner charge items found.")
 
-	# Set defaults and calculate totals
-	purchase_order.calculate_taxes_and_totals()
-
-	# Insert as Draft
 	purchase_order.insert(ignore_mandatory=1)
 
 	return {
 		"name": purchase_order.name,
 		"doctype": "Purchase Order",
-		"supplier": purchase_order.supplier,
-		"company": purchase_order.company,
-		"project": purchase_order.project,
-		"items": [
-			{
-				"item_code": item.item_code,
-				"qty": item.qty,
-				"rate": item.rate
-			}
-			for item in purchase_order.items
-		]
 	}
 
 def sync_all_tracking_statuses():
@@ -823,183 +838,8 @@ def make_payment_entry(source_name, target_doc=None):
 
 	return doc
 
-# @frappe.whitelist()
-# def print_delivery_order(doctype, docname, containers,doc):
-# 	if isinstance(containers, str):
-# 		containers = json.loads(containers)
-# 		doc = json.loads(doc)
-
-# 	if not containers:
-# 		frappe.throw("Please select at least one container.")
-
-# 	# ---------------------------------------------------------
-# 	# Create Container Delivery Order
-# 	# ---------------------------------------------------------
-# 	delivery_order = frappe.new_doc("Container Delivery Order")
-# 	company_name = (doc.get("company") or "").strip()
-# 	company_words = company_name.split()
-
-# 	# ---------------------------------------------------------
-# 	# Map Header Fields
-# 	# ---------------------------------------------------------
-# 	delivery_order.company = doc.get("company")
-# 	delivery_order.customer = doc.get("customer")
-# 	delivery_order.line = doc.get("line")
-# 	delivery_order.posting_date = frappe.utils.today()
-# 	delivery_order.location = doc.get("location")
-
-# 	# ---------------------------------------------------------
-# 	# Map Selected Container Details
-# 	# ---------------------------------------------------------
-# 	selected_names = {
-# 		row.get("name")
-# 		for row in containers
-# 		if row.get("name")
-# 	}
-
-# 	for source_row in doc.get("table_tvep"):
-
-# 		if source_row.get("name") not in selected_names:
-# 			continue
-
-# 		target_row = delivery_order.append(
-# 			"container_details",
-# 			{}
-# 		)
-
-# 		# Equipment Table2 fields
-# 		target_row.container_no = source_row.get("container_no")
-# 		target_row.c_type = source_row.get("c_type")
-# 		target_row.seal_no = source_row.get("seal_no")
-# 		target_row.tare_wt = source_row.get("tare_wt")
-
-# 		# Optional fields, if required
-# 		# target_row.owner1 = source_row.owner1
-# 		# target_row.dt_charges = source_row.dt_charges
-# 		# target_row.dth = source_row.dth
-# 		# target_row.og = source_row.og
-# 		# target_row.dg = source_row.dg
-
-# 	# ---------------------------------------------------------
-# 	# Validate
-# 	# ---------------------------------------------------------
-# 	if not delivery_order.container_details:
-# 		frappe.throw("No valid containers were selected.")
-
-# 	# ---------------------------------------------------------
-# 	# Save
-# 	# ---------------------------------------------------------
-# 	delivery_order.insert()
-# 	frappe.db.set_value(doctype,docname,'do_no',delivery_order.name)
-
-# 	# ---------------------------------------------------------
-# 	# Load original Import-Export Order
-# 	# ---------------------------------------------------------
-
-# 	original_doc = frappe.get_doc(doctype, docname)
-
-# 	# ---------------------------------------------------------
-# 	# Get selected child row names
-# 	# ---------------------------------------------------------
-
-# 	selected_names = {
-# 		row.get("name")
-# 		for row in containers
-# 		if row.get("name")
-# 	}
-
-# 	if not selected_names:
-# 		frappe.throw("No valid containers were selected.")
-
-# 	# ---------------------------------------------------------
-# 	# Create an in-memory copy
-# 	# ---------------------------------------------------------
-
-# 	doc = frappe.copy_doc(original_doc)
-
-# 	doc.name = original_doc.name
-# 	doc.posting_date = original_doc.get("posting_date")
-
-# 	# ---------------------------------------------------------
-# 	# Keep only selected containers
-# 	# ---------------------------------------------------------
-
-# 	selected_table = []
-
-# 	for row in original_doc.table_tvep:
-
-# 		if row.name in selected_names:
-
-# 			selected_table.append({
-# 				"doctype": row.doctype,
-# 				"name": row.name,
-# 				"container_no": row.container_no,
-# 				"c_type": row.c_type,
-# 				"seal_no": row.seal_no,
-# 				"tare_wt": row.tare_wt,
-# 				"owner1": row.owner1,
-# 				"dth": row.dth,
-# 				"og": row.og,
-# 				"dg": row.dg,
-# 				"delivery_order_printed": row.delivery_order_printed,
-# 			})
-
-# 	if not selected_table:
-# 		frappe.throw("No valid containers were selected.")
-
-# 	# ---------------------------------------------------------
-# 	# Replace child table only in memory
-# 	# Original document is NOT modified here
-# 	# ---------------------------------------------------------
-
-# 	doc.set("table_tvep", selected_table)
-
-# 	# ---------------------------------------------------------
-# 	# Generate print HTML
-# 	# ---------------------------------------------------------
-
-# 	# html = frappe.get_print(
-# 	# 	doctype=doctype,
-# 	# 	name=docname,
-# 	# 	print_format="Delivery Order",
-# 	# 	doc=doc,
-# 	# 	letterhead="Company Letterhead - ICSS"
-# 	# )
-
-# 	# ---------------------------------------------------------
-# 	# Mark selected containers as Delivery Order Printed
-# 	# Only execute after successful print HTML generation
-# 	# ---------------------------------------------------------
-
-# 	for row_name in selected_names:
-
-# 		child_exists = frappe.db.exists(
-# 			"Equipment Table2",
-# 			row_name
-# 		)
-
-# 		if child_exists:
-# 			frappe.db.set_value(
-# 				"Equipment Table2",
-# 				row_name,
-# 				"delivery_order_printed",
-# 				1,
-# 				update_modified=False
-# 			)
-
-	# ---------------------------------------------------------
-	# Return print HTML
-	# ---------------------------------------------------------
-
-	# return html
-
 @frappe.whitelist()
 def create_detention_sales_order(import_export_order, equipment_row_name):
-	"""
-	Create Sales Invoice for detention charges from Equipment Table2.
-	"""
-
-	# Get Import-Export Order
 	order = frappe.get_doc("Import-Export Order", import_export_order)
 
 	if not order.customer:
@@ -1008,75 +848,79 @@ def create_detention_sales_order(import_export_order, equipment_row_name):
 	if not order.company:
 		frappe.throw("Company is missing in Import-Export Order.")
 
-	# if not order.project:
-	# 	frappe.throw("Project is missing in Import-Export Order.")
+	if not order.project:
+		frappe.throw("Project is missing in Import-Export Order.")
 
 	if not order.line:
-		frappe.throw("Line is missing in Import-Export Order.")
+		frappe.throw("Shipping Line is missing in Import-Export Order.")
 
-	# Find Equipment Table2 row
-	equipment_row = None
-
-	for row in order.table_tvep:
-		if row.name == equipment_row_name:
-			equipment_row = row
-			break
-
-	if not equipment_row:
-		frappe.throw(
-			f"Equipment row {equipment_row_name} not found."
-		)
-
-	# Validate detention charges
-	dt_charges = frappe.utils.flt(equipment_row.dt_charges)
-
-	if dt_charges <= 0:
-		frappe.throw(
-			"Detention Charges must be greater than 0 before creating the Sales Invoice."
-		)
-
-	# Find Detention Slab using Line
-	detention_slabs = frappe.get_all(
-		"Detention Slab",
-		filters={
-			"line": order.line
-		},
-		fields=[
-			"name",
-			"item",
-			"item_name",
-			"currency"
-		],
-		limit=1
+	equipment_row = next(
+		(
+			row for row in order.table_tvep
+			if row.name == equipment_row_name
+		),
+		None,
 	)
 
-	if not detention_slabs:
+	if not equipment_row:
+		frappe.throw("Equipment row not found in Import-Export Order.")
+
+	dt_charges = flt(equipment_row.dt_charges)
+
+	if dt_charges <= 0:
+		frappe.throw("Detention charges are missing or zero.")
+
+	# Check whether this specific equipment row was already processed
+	existing_items = frappe.db.sql(
+		"""
+		SELECT soi.parent
+		FROM `tabSales Order Item` soi
+		INNER JOIN `tabSales Order` so ON so.name = soi.parent
+		WHERE so.docstatus = 1
+		  AND so.custom_importexport_order = %s
+		  AND soi.custom_container_no = %s
+		LIMIT 1
+		""",
+		(order.name, equipment_row.container_no),
+	)
+
+	if existing_items:
 		frappe.throw(
-			f"No Detention Slab found for Line: {order.line}"
+			f"Detention charges have already been created for "
+			f"this equipment row in Sales Order {existing_items[0][0]}."
 		)
 
-	detention_slab = detention_slabs[0]
+	if not equipment_row.detention_slab:
+		frappe.throw("Detention Slab is missing for this equipment row.")
 
-	# if not detention_slab.item:
-	# 	frappe.throw(
-	# 		f"Item is not configured in Detention Slab {detention_slab.name}."
-	# 	)
+	# Resolve the item from Detention Slab
+	item_code = frappe.db.get_value(
+		"Detention Slab",
+		equipment_row.detention_slab,
+		"item",
+	)
 
-	# Create Sales Invoice
+	if not item_code:
+		frappe.throw(
+			"Item Code is missing in the selected Detention Slab."
+		)
+
 	sales_order = frappe.new_doc("Sales Order")
-
 	sales_order.customer = order.customer
 	sales_order.company = order.company
 	sales_order.project = order.project
-	sales_order.custom_importexport_order = import_export_order
-	sales_order.delivery_date=today()
+	sales_order.delivery_date = today()
 
-	# Add item
+	# Use the actual custom link field on Sales Order
+	sales_order.custom_importexport_order = order.name
+
 	sales_order.append("items", {
-		"item_code": frappe.db.get_value('Detention Slab',equipment_row.detention_slab,'item'),
+		"item_code": item_code,
+		"custom_container_no": equipment_row.container_no,
 		"qty": 1,
 		"rate": dt_charges,
-		"project": order.project
+		"project": order.project,
+		"custom_equipment_row": equipment_row.name,
 	})
 
 	sales_order.insert(ignore_mandatory=1)
@@ -1084,12 +928,6 @@ def create_detention_sales_order(import_export_order, equipment_row_name):
 	return {
 		"name": sales_order.name,
 		"doctype": "Sales Order",
-		"customer": sales_order.customer,
-		"company": sales_order.company,
-		"project": sales_order.project,
-		"item": equipment_row.container_no,
-		"qty": 1,
-		"rate": dt_charges
 	}
 
 def _esc(value):
@@ -2205,88 +2043,84 @@ def calculate_other_charges(doc):
 
 @frappe.whitelist()
 def create_other_charges_sales_invoice(import_export_order):
-	# Get Import-Export Order
 	order = frappe.get_doc("Import-Export Order", import_export_order)
 
-	# Validate required fields
 	if not order.customer:
 		frappe.throw("Customer is missing in Import-Export Order.")
 
 	if not order.company:
 		frappe.throw("Company is missing in Import-Export Order.")
 
-	# if not order.project:
-	# 	frappe.throw("Project is missing in Import-Export Order.")
+	if not order.project:
+		frappe.throw("Project is missing in Import-Export Order.")
 
-	# Validate Other Charges table
 	if not order.other_charges:
 		frappe.throw("No Other Charges found in Import-Export Order.")
 
-	# Create Sales Invoice
-	sales_invoice = frappe.new_doc("Sales Invoice")
+	# Get existing Sales Invoices
+	existing_invoices = frappe.get_all(
+		"Sales Order",
+		filters={
+			"docstatus": 1,
+			"custom_importexport_order": order.name,
+		},
+		pluck="name",
+	)
 
-	sales_invoice.customer = order.customer
-	sales_invoice.company = order.company
-	sales_invoice.project = order.project
-	sales_invoice.custom_ref_importexport = import_export_order
+	existing_item_codes = set()
+
+	for invoice_name in existing_invoices:
+		invoice = frappe.get_doc("Sales Order", invoice_name)
+
+		for item in invoice.items:
+			if item.item_code:
+				existing_item_codes.add(item.item_code)
+
+	# Select only remaining items
+	remaining_items = [
+		row for row in order.other_charges
+		if row.item_code and row.item_code not in existing_item_codes
+	]
+
+	if not remaining_items:
+		frappe.throw(
+			"Other charges have already been created for all items."
+		)
+
+	sales_order = frappe.new_doc("Sales Order")
+	sales_order.customer = order.customer
+	sales_order.company = order.company
+	sales_order.project = order.project
+	sales_order.delivery_date = today()
+
+	# Use the actual custom link field on Sales Invoice
+	sales_order.custom_importexport_order = order.name
 
 	items_added = 0
 
-	# Add all Other Charges items
-	for row in order.other_charges:
-		
-		# # Skip rows without item/type
-		# if not row.eq_type:
-		# 	continue
-		
-		# Get quantity from Equipment Table1 based on eq_type
-		# qty = frappe.db.get_value(
-		# 	"Equipment Table1",
-		# 	{"type": row.eq_type},
-		# 	"nos"
-		# ) or 0
+	for row in remaining_items:
+		qty = flt(row.qty)
+		rate = flt(row.rate)
 
-		# qty = flt(qty)
+		if qty <= 0 or rate <= 0:
+			continue
 
-		# # Skip if quantity is zero
-		# if qty <= 0:
-		# 	continue
-
-		# Add item to Sales Invoice
-		sales_invoice.append("items", {
+		sales_order.append("items", {
 			"item_code": row.item_code,
-			"rate": row.rate,
-			"qty": row.qty,
+			"qty": qty,
+			"rate": rate,
 		})
+
 		items_added += 1
 
-	# Make sure at least one item was added
 	if not items_added:
-		frappe.throw(
-			"No valid items found in Other Charges table."
-		)
+		frappe.throw("No valid remaining Other Charges items found.")
 
-	# Calculate totals
-	sales_invoice.calculate_taxes_and_totals()
-
-	# Insert as Draft
-	sales_invoice.insert()
+	sales_order.insert(ignore_mandatory=1)
 
 	return {
-		"name": sales_invoice.name,
-		"doctype": "Sales Invoice",
-		"customer": sales_invoice.customer,
-		"company": sales_invoice.company,
-		"project": sales_invoice.project,
-		"custom_ref_importexport" : sales_invoice.custom_ref_importexport,
-		"items": [
-			{
-				"item_code": item.item_code,
-				"qty": item.qty,
-				"rate": item.rate
-			}
-			for item in sales_invoice.items
-		]
+		"name": sales_order.name,
+		"doctype": "Sales Order",
 	}
 
 @frappe.whitelist()
@@ -3504,12 +3338,10 @@ def download_manifests_by_project(project):
 	"""
 	if not project:
 		frappe.throw(_("Project is required."))
-	
-	proj = frappe.db.get_value('Project',project,'project_name')
 
 	orders = frappe.get_all(
 		"Import-Export Order",
-		filters={"project": proj, "docstatus": ["!=", 2]},
+		filters={"project": project, "docstatus": ["!=", 2]},
 		fields=["name", "bl_no"]
 	)
 	
