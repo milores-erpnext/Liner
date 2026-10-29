@@ -100,6 +100,9 @@ class ImportExportOrder(Document):
 		if not self.bl_no or not self.table_tvep:
 			return
 
+		if self.line_name != "TRANS ASIAN SHIPPING SERVICES (P) LTD":
+			return
+
 		container_no = self.table_tvep[0].container_no
 		if not container_no:
 			return
@@ -150,6 +153,9 @@ class ImportExportOrder(Document):
 		self.update_child_table("expected_routing")
 
 	def fetch_bl_status(self):
+		if self.line_name != "TRANS ASIAN SHIPPING SERVICES (P) LTD":
+			return
+
 		url = "http://182.72.192.230/TASFREIGHT/AppTasnet/BLTracking.aspx"
 
 		try:
@@ -709,7 +715,7 @@ def sync_all_tracking_statuses():
 	"""
 	names = frappe.get_all(
 		"Import-Export Order",
-		filters={"bl_no": ["is", "set"]},
+		filters={"bl_no": ["is", "set"],"line_name": ["!=","TRANS ASIAN SHIPPING SERVICES (P) LTD"]},
 		pluck="name",
 	)
 
